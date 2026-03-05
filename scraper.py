@@ -456,7 +456,7 @@ def buscar_amadeus(usd_to_ars, timestamp):
 # ─── BÚSQUEDA FLYBONDI (Stealth) ───────────────────────────────────────────
 
 def buscar_flybondi(usd_to_ars, timestamp):
-    """Intenta buscar vuelos en Flybondi usando scraping stealth."""
+    """Intenta buscar vuelos en Flybondi usando scraping stealth (Ghost Mode)."""
     vuelos = []
     
     try:
@@ -466,78 +466,77 @@ def buscar_flybondi(usd_to_ars, timestamp):
         return vuelos
     
     client = HttpClient(
-        impersonate="chrome",
+        ghost_mode=True,  # TLS rotation + stealth headers + delays
         retry_count=2,
-        stealth_mode=True,
         extra_headers={
             "Origin": "https://flybondi.com",
             "Referer": "https://flybondi.com/",
-            "Accept": "application/json, text/plain, */*",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         }
     )
     
     # Flybondi solo opera desde BUE a ciertos destinos brasileños
     flybondi_destinos = ["FLN"]  # Expandir según rutas reales
     
-    for dest in flybondi_destinos:
-        print(f"  🔍 Flybondi BUE → {dest}...", end=" ", flush=True)
-        try:
-            # Warm session
-            client.warm_session("https://flybondi.com")
-            
-            # API de precios (endpoint capturado de investigaciones previas)
-            r = client.get(
-                "https://api-prod.flybondi.com/fb/travel/prices",
-                params={
-                    "origin": "BUE",
-                    "destination": dest,
-                    "departureDate": FECHA_IDA,
-                    "adults": ADULTOS,
-                    "children": 0,
-                    "infants": 0,
-                    "currency": "ARS"
-                },
-                timeout=15
-            )
-            
-            if r.status_code == 200:
-                data = r.json()
-                flights = data.get("outbound", []) if isinstance(data, dict) else data
+    total_encontrados = 0
+    errores_red = 0
+    
+    for fecha_ida, fecha_vuelta in FECHAS:
+        for dest in flybondi_destinos:
+            print(f"  🔍 Flybondi BUE → {dest} ({fecha_ida})...", end=" ", flush=True)
+            try:
+                # Warm session primero
+                client.warm_session("https://flybondi.com")
                 
-                if isinstance(flights, list):
-                    for flight in flights:
-                        precio_ars = float(flight.get("price", 0))
-                        if precio_ars <= 0:
-                            continue
-                        precio_usd = round(precio_ars / usd_to_ars, 2)
+                # Intentar la página de resultados de Flybondi
+                search_url = (
+                    f"https://flybondi.com/ar/search/results"
+                    f"?origin=BUE&destination={dest}"
+                    f"&departureDate={fecha_ida}&returnDate={fecha_vuelta}"
+                    f"&adults={ADULTOS}&children=0&infants=0"
+                )
+                
+                r = client.get(search_url, timeout=20)
+                
+                if r.status_code == 200:
+                    # Flybondi es SPA — los precios no están en el HTML
+                    # pero verificamos que no nos bloquearon
+                    html_len = len(r.text)
+                    has_prices = any(kw in r.text for kw in ['price', 'fare', 'ARS', 'precio'])
+                    
+                    if has_prices:
+                        print(f"✅ Página cargada ({html_len} bytes) — precios detectados en HTML")
+                    elif html_len > 5000:
+                        print(f"⚠️ SPA cargada ({html_len} bytes) — precios vía JS (no extraíbles)")
+                    else:
+                        print(f"⚠️ Respuesta muy corta ({html_len} bytes) — posible bloqueo")
+                        errores_red += 1
                         
-                        vuelos.append({
-                            'destino': dest,
-                            'destino_nombre': DESTINOS.get(dest, dest),
-                            'origen': 'BUE',
-                            'aerolinea': 'FO',
-                            'aerolinea_nombre': 'Flybondi',
-                            'precio_usd': precio_usd,
-                            'precio_ars': precio_ars,
-                            'duracion_ida': flight.get('duration', ''),
-                            'duracion_vuelta': '',
-                            'escalas_ida': 0,
-                            'escalas_vuelta': 0,
-                            'es_directo': 1,
-                            'segmentos_ida': f"BUE→{dest} (FO, directo)",
-                            'segmentos_vuelta': '',
-                            'hora_salida': flight.get('departureTime', ''),
-                            'hora_llegada': flight.get('arrivalTime', ''),
-                            'fuente': 'flybondi_direct',
-                        })
-                    print(f"✅ {len(flights)} vuelos")
+                elif r.status_code == 403:
+                    print(f"🚫 403 Forbidden — WAF bloqueó la request")
+                    errores_red += 1
+                elif r.status_code == 429:
+                    print(f"🚫 429 Rate Limited — demasiadas requests")
+                    errores_red += 1
                 else:
-                    print("⚠️ Formato inesperado")
-            else:
-                print(f"⚠️ HTTP {r.status_code}")
-                
-        except Exception as e:
-            print(f"❌ {e}")
+                    print(f"⚠️ HTTP {r.status_code}")
+                    errores_red += 1
+                    
+            except Exception as e:
+                error_str = str(e).lower()
+                if any(kw in error_str for kw in ['timeout', 'connection', 'refused', 'reset', 'ssl', '403', 'waf']):
+                    print(f"🚫 [!] Flybondi: Bloqueo de IP o cambio de estructura — {type(e).__name__}")
+                else:
+                    print(f"❌ Error de código: {e}")
+                errores_red += 1
+            
+            # Delay humano entre búsquedas
+            human_delay(2.0, 4.0)
+    
+    # Resumen de Flybondi
+    if errores_red > 0 and total_encontrados == 0:
+        print(f"  ⚠️ [!] Flybondi: {errores_red} errores de red — posible bloqueo de IP o cambio de estructura")
+        print(f"  💡 Tip: Flybondi es SPA, los precios se cargan por JS/GraphQL protegido por WAF")
     
     # Cleanup explícito
     try:

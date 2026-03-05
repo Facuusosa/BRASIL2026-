@@ -887,10 +887,12 @@
     <div class="sec-title">📋 Todos los vuelos</div>
     <div class="tbox">
       <div class="thead-ctrl">
-        <input class="ctrl" id="fd" placeholder="🔍 Destino" oninput="rt()" style="width:105px">
+        <input class="ctrl" id="fd" placeholder="🔍 Destino" oninput="onFilterInput()" style="width:105px">
         <input class="ctrl" id="fa" placeholder="✈ Aerolínea" oninput="rt()" style="width:125px">
         <button class="fbtn" id="bdir" onclick="tf('dir')">✈ Solo directos</button>
         <button class="fbtn" id="bmax" onclick="tf('max')">⏱ Máx 5hs</button>
+        <button class="fbtn" id="bclear" onclick="clearFilters()"
+          style="background:var(--surface3);border-color:var(--red);color:var(--red)">✕ Limpiar filtros</button>
         <select class="ctrl" id="fs" onchange="rt()">
           <option value="pa">Precio ↑</option>
           <option value="pd">Precio ↓</option>
@@ -959,6 +961,7 @@
     function goTo(d) {
       activeDest = d;
       document.getElementById('fd').value = d;
+      document.getElementById('fa').value = '';
       // Update sidebar active states
       document.querySelectorAll('#nav-dests .nav-item').forEach(el => el.classList.remove('active'));
       const navEl = document.getElementById('nav-' + (d || 'ALL'));
@@ -968,6 +971,46 @@
       document.querySelector('.page-heading').innerHTML = d ? `Vuelos a <em>${NAMES[d] || d}</em>` : 'Mejor precio a <em>Brasil</em>';
       renderDeals(d);
       rt();
+      // Scroll to top of content area
+      document.querySelector('.content').scrollTop = 0;
+    }
+
+    function onFilterInput() {
+      // When user types in the destination filter, sync sidebar highlight
+      const val = document.getElementById('fd').value.toUpperCase().trim();
+      document.querySelectorAll('#nav-dests .nav-item').forEach(el => el.classList.remove('active'));
+      const codes = ['FLN', 'GIG', 'SSA', 'FOR', 'REC', 'NAT', 'MCZ', 'BPS'];
+      const match = codes.find(c => c === val);
+      if (match) {
+        const navEl = document.getElementById('nav-' + match);
+        if (navEl) navEl.classList.add('active');
+        activeDest = match;
+      } else if (!val) {
+        document.getElementById('nav-ALL').classList.add('active');
+        activeDest = '';
+      }
+      renderDeals(activeDest);
+      rt();
+    }
+
+    function clearFilters() {
+      // Reset everything
+      document.getElementById('fd').value = '';
+      document.getElementById('fa').value = '';
+      document.getElementById('fs').value = 'pa';
+      F.dir = false;
+      F.max = false;
+      document.getElementById('bdir').classList.remove('on');
+      document.getElementById('bmax').classList.remove('on');
+      activeDest = '';
+      // Reset sidebar
+      document.querySelectorAll('#nav-dests .nav-item').forEach(el => el.classList.remove('active'));
+      document.getElementById('nav-ALL').classList.add('active');
+      // Reset heading
+      document.querySelector('.page-heading').innerHTML = 'Mejor precio a <em>Brasil</em>';
+      renderDeals('');
+      rt();
+      document.querySelector('.content').scrollTop = 0;
     }
 
     function init() {
