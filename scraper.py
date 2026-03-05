@@ -456,7 +456,14 @@ def buscar_amadeus(usd_to_ars, timestamp):
 # ─── BÚSQUEDA FLYBONDI (Stealth) ───────────────────────────────────────────
 
 def buscar_flybondi(usd_to_ars, timestamp):
-    """Intenta buscar vuelos en Flybondi usando scraping stealth (Ghost Mode)."""
+    """
+    Busca vuelos en Flybondi usando scraping stealth (Ghost Mode).
+    Estrategia de extracción en cascada:
+      1. window.__INITIAL_STATE__ (script tags) — más estable
+      2. Regex de precios (US$ / $ + números)
+      3. Detección de secciones ida/vuelta
+      4. Failsafe: dump de <body> para debug
+    """
     vuelos = []
     
     try:
@@ -465,8 +472,12 @@ def buscar_flybondi(usd_to_ars, timestamp):
         print("  ⚠️ curl_cffi no disponible — omitiendo Flybondi")
         return vuelos
     
+    import re
+    import json as json_mod
+    import uuid
+    
     client = HttpClient(
-        ghost_mode=True,  # TLS rotation + stealth headers + delays
+        ghost_mode=True,
         retry_count=2,
         extra_headers={
             "Origin": "https://flybondi.com",
@@ -474,21 +485,94 @@ def buscar_flybondi(usd_to_ars, timestamp):
         }
     )
     
-    # Flybondi solo opera desde BUE a ciertos destinos brasileños
-    flybondi_destinos = ["FLN"]  # Expandir según rutas reales
-    
+    flybondi_destinos = ["FLN"]
     total_encontrados = 0
     errores_red = 0
     
+    # ── Funciones auxiliares de extracción ──
+
+    def _extraer_precios_initial_state(html):
+        """Estrategia 1: Buscar window.__INITIAL_STATE__ en script tags."""
+        found = []
+        patterns = [
+            r'window\.__INITIAL_STATE__\s*=\s*(\{.*?\});?\s*</script>',
+            r'window\.__INITIAL_STATE__\s*=\s*JSON\.parse\([\'"](.+?)[\'"]\)',
+            r'"flights"\s*:\s*(\[.*?\])\s*[,}]',
+            r'"outbound"\s*:\s*(\[.*?\])\s*[,}]',
+        ]
+        for pattern in patterns:
+            matches = re.findall(pattern, html, re.DOTALL)
+            for m in matches:
+                try:
+                    data = json_mod.loads(m)
+                    if isinstance(data, dict):
+                        for key in ['flights', 'outbound', 'results', 'journeys', 'fares']:
+                            if key in data and isinstance(data[key], list):
+                                found.extend(data[key])
+                        if 'search' in data and isinstance(data['search'], dict):
+                            sr = data['search']
+                            for key in ['results', 'flights', 'journeys']:
+                                if key in sr and isinstance(sr[key], list):
+                                    found.extend(sr[key])
+                    elif isinstance(data, list):
+                        found.extend(data)
+                except (json_mod.JSONDecodeError, TypeError):
+                    continue
+        return found
+
+    def _extraer_precios_regex(html):
+        """Estrategia 2: Buscar patrones de precio US$/$ + números."""
+        precios = []
+        patterns = [
+            r'US\$\s*([0-9.,]+)',
+            r'USD\s*([0-9.,]+)',
+            r'\$\s*([0-9]{1,3}(?:[.,][0-9]{3})*(?:[.,][0-9]{2})?)',
+        ]
+        for pattern in patterns:
+            matches = re.findall(pattern, html)
+            for m in matches:
+                cleaned = m.replace('.', '').replace(',', '.')
+                try:
+                    val = float(cleaned)
+                    if 5 < val < 500000:
+                        precios.append(val)
+                except ValueError:
+                    continue
+        return sorted(set(precios))
+
+    def _detectar_seccion_ida_vuelta(html):
+        """Estrategia 3: Separar precios de ida y vuelta por contexto."""
+        ida_section = ''
+        vuelta_section = ''
+        ida_markers = ['Elegí tu vuelo de ida', 'vuelo de ida', 'Outbound', 'IDA']
+        vuelta_markers = ['Elegí tu vuelo de vuelta', 'vuelo de vuelta', 'Return', 'VUELTA']
+        for marker in ida_markers:
+            idx = html.find(marker)
+            if idx >= 0:
+                for vm in vuelta_markers:
+                    vidx = html.find(vm, idx)
+                    if vidx >= 0:
+                        ida_section = html[idx:vidx]
+                        vuelta_section = html[vidx:vidx + len(ida_section)]
+                        break
+                if not ida_section:
+                    ida_section = html[idx:idx + 5000]
+                break
+        result = {'ida': [], 'vuelta': []}
+        if ida_section:
+            result['ida'] = _extraer_precios_regex(ida_section)
+        if vuelta_section:
+            result['vuelta'] = _extraer_precios_regex(vuelta_section)
+        return result
+
+    # ── Loop principal ──
+
     for fecha_ida, fecha_vuelta in FECHAS:
         for dest in flybondi_destinos:
             print(f"  🔍 Flybondi BUE → {dest} ({fecha_ida})...", end=" ", flush=True)
             try:
-                # Warm session primero
                 client.warm_session("https://flybondi.com")
                 
-                # URL con parámetros REALES capturados de Chrome DevTools
-                # Flybondi usa fromCityCode/toCityCode, NO origin/destination
                 search_url = (
                     f"https://flybondi.com/ar/search/results"
                     f"?adults={ADULTOS}&children=0&infants=0"
@@ -498,37 +582,120 @@ def buscar_flybondi(usd_to_ars, timestamp):
                     f"&utm_origin=search_bar"
                 )
                 
-                # Cookie de sesión Flybondi (formato capturado)
-                import uuid
                 session_id = f"SFO-{uuid.uuid4()}"
-                
                 r = client.get(
-                    search_url,
-                    timeout=20,
+                    search_url, timeout=20,
                     cookies={"FBSessionX-ar-ibe": session_id}
                 )
                 
                 if r.status_code == 200:
                     html_text = r.text
                     html_len = len(html_text)
-                    
-                    # Detectar si la SPA cargó correctamente
-                    has_flight_search = 'flight-search' in html_text or 'vendors~flight-search' in html_text
-                    has_react = 'bundle.' in html_text and '__NEXT_DATA__' not in html_text
                     has_title = 'Elegí tu vuelo' in html_text
                     
-                    if has_title and html_len > 50000:
-                        total_encontrados += 1  # Contamos como éxito de conexión
-                        if has_flight_search:
-                            print(f"✅ SPA OK ({html_len//1024} KB) — JS flight-search detectado")
-                        else:
-                            print(f"✅ SPA OK ({html_len//1024} KB) — precios vía JS (requiere Playwright para extraer)")
-                    elif html_len > 5000:
-                        print(f"⚠️ HTML parcial ({html_len//1024} KB) — posible carga incompleta")
-                    else:
+                    if html_len < 5000:
                         print(f"⚠️ Respuesta corta ({html_len} bytes) — posible bloqueo")
                         errores_red += 1
-                        
+                        continue
+                    
+                    if not has_title and html_len < 50000:
+                        print(f"⚠️ HTML inesperado ({html_len//1024} KB)")
+                        errores_red += 1
+                        continue
+                    
+                    print(f"✅ SPA OK ({html_len//1024} KB)", end="")
+                    
+                    # ── ESTRATEGIA 1: __INITIAL_STATE__ ──
+                    state_flights = _extraer_precios_initial_state(html_text)
+                    if state_flights:
+                        print(f" — {len(state_flights)} vuelos vía __INITIAL_STATE__")
+                        for flight in state_flights:
+                            if not isinstance(flight, dict):
+                                continue
+                            precio_raw = None
+                            for pk in ['price', 'fare', 'amount', 'total', 'lowestFare', 'basePrice']:
+                                val = flight.get(pk)
+                                if val is not None:
+                                    try:
+                                        precio_raw = float(val)
+                                        break
+                                    except (ValueError, TypeError):
+                                        if isinstance(val, dict):
+                                            precio_raw = float(val.get('amount', val.get('value', 0)))
+                                            break
+                            if not precio_raw or precio_raw <= 0:
+                                continue
+                            currency = flight.get('currency', flight.get('currencyCode', 'USD'))
+                            precio_usd = precio_raw if currency == 'USD' else round(precio_raw / usd_to_ars, 2)
+                            precio_ars = round(precio_raw * usd_to_ars, 2) if currency == 'USD' else precio_raw
+                            vuelos.append({
+                                'destino': dest, 'destino_nombre': DESTINOS.get(dest, dest),
+                                'origen': 'BUE', 'aerolinea': 'FO', 'aerolinea_nombre': 'Flybondi',
+                                'precio_usd': precio_usd, 'precio_ars': precio_ars,
+                                'duracion_ida': flight.get('duration', ''), 'duracion_vuelta': '',
+                                'escalas_ida': flight.get('stops', 0), 'escalas_vuelta': 0,
+                                'es_directo': 1 if flight.get('stops', 0) == 0 else 0,
+                                'segmentos_ida': f"BUE→{dest} (FO)", 'segmentos_vuelta': '',
+                                'hora_salida': flight.get('departureTime', flight.get('departure', '')),
+                                'hora_llegada': flight.get('arrivalTime', flight.get('arrival', '')),
+                                'fuente': 'flybondi_initial_state',
+                                'nota': f"Original: {currency} {precio_raw}",
+                            })
+                        total_encontrados += len([v for v in vuelos if v.get('fuente') == 'flybondi_initial_state'])
+                        continue
+                    
+                    # ── ESTRATEGIA 2+3: Regex + secciones ida/vuelta ──
+                    secciones = _detectar_seccion_ida_vuelta(html_text)
+                    if secciones['ida']:
+                        print(f" — Precios ida: {secciones['ida'][:5]}")
+                        for precio_usd in secciones['ida'][:10]:
+                            precio_ars = round(precio_usd * usd_to_ars, 2)
+                            vuelos.append({
+                                'destino': dest, 'destino_nombre': DESTINOS.get(dest, dest),
+                                'origen': 'BUE', 'aerolinea': 'FO', 'aerolinea_nombre': 'Flybondi',
+                                'precio_usd': round(precio_usd, 2), 'precio_ars': precio_ars,
+                                'duracion_ida': '', 'duracion_vuelta': '',
+                                'escalas_ida': 0, 'escalas_vuelta': 0, 'es_directo': 1,
+                                'segmentos_ida': f"BUE→{dest} (FO, directo)", 'segmentos_vuelta': '',
+                                'hora_salida': fecha_ida, 'hora_llegada': '',
+                                'fuente': 'flybondi_html_regex',
+                                'nota': f"Original: USD {precio_usd}",
+                            })
+                        total_encontrados += len(secciones['ida'][:10])
+                        continue
+                    
+                    # Regex global (sin secciones detectadas)
+                    all_prices = _extraer_precios_regex(html_text)
+                    if all_prices:
+                        print(f" — {len(all_prices)} precios globales: {all_prices[:5]}")
+                        for precio_usd in all_prices[:10]:
+                            precio_ars = round(precio_usd * usd_to_ars, 2)
+                            vuelos.append({
+                                'destino': dest, 'destino_nombre': DESTINOS.get(dest, dest),
+                                'origen': 'BUE', 'aerolinea': 'FO', 'aerolinea_nombre': 'Flybondi',
+                                'precio_usd': round(precio_usd, 2), 'precio_ars': precio_ars,
+                                'duracion_ida': '', 'duracion_vuelta': '',
+                                'escalas_ida': 0, 'escalas_vuelta': 0, 'es_directo': 1,
+                                'segmentos_ida': f"BUE→{dest} (FO)", 'segmentos_vuelta': '',
+                                'hora_salida': fecha_ida, 'hora_llegada': '',
+                                'fuente': 'flybondi_regex_global',
+                                'nota': f"Original: USD {precio_usd}",
+                            })
+                        total_encontrados += len(all_prices[:10])
+                        continue
+                    
+                    # ── FAILSAFE: Debug dump ──
+                    print(f" — 0 precios extraídos")
+                    body_match = re.search(r'<body[^>]*>(.*?)</body>', html_text, re.DOTALL)
+                    if body_match:
+                        body_clean = re.sub(r'<[^>]+>', ' ', body_match.group(1))
+                        body_clean = re.sub(r'\s+', ' ', body_clean).strip()
+                        print(f"  🔍 DEBUG body (primeros 1000 chars):")
+                        print(f"  {body_clean[:1000]}")
+                    else:
+                        print(f"  🔍 DEBUG HTML (primeros 1000 chars):")
+                        print(f"  {html_text[:1000]}")
+                    
                 elif r.status_code == 403:
                     print(f"🚫 403 Forbidden — WAF bloqueó la request")
                     errores_red += 1
@@ -547,17 +714,16 @@ def buscar_flybondi(usd_to_ars, timestamp):
                     print(f"❌ Error de código: {e}")
                 errores_red += 1
             
-            # Delay humano entre búsquedas
             human_delay(2.0, 4.0)
     
-    # Resumen de Flybondi
+    # Resumen final
     if total_encontrados > 0:
-        print(f"  ✅ Flybondi: {total_encontrados} páginas cargadas OK (SPA — precios vía JS)")
-        print(f"  💡 Para extraer precios reales: necesitamos Playwright (headless browser)")
+        print(f"  ✅ Flybondi: {total_encontrados} vuelos extraídos")
     elif errores_red > 0:
-        print(f"  ⚠️ [!] Flybondi: {errores_red} errores de red — posible bloqueo de IP o cambio de estructura")
+        print(f"  ⚠️ [!] Flybondi: {errores_red} errores — posible bloqueo de IP")
+    else:
+        print(f"  ⚠️ Flybondi: 0 vuelos — SPA carga OK pero precios solo vía JS (requiere Playwright)")
     
-    # Cleanup explícito
     try:
         client.close()
     except:
