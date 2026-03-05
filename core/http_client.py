@@ -1,26 +1,28 @@
 """
-🌐 HTTP Client — Wrapper de curl_cffi con Impersonación + Retry + Circuit Breaker
+🌐 HTTP Client — Ghost Mode para IP Residencial
 
-Extraído de:
-- curl_cffi docs: https://curl-cffi.readthedocs.io/en/latest/
-- error-handling-patterns skill: https://skills.sh/wshobson/agents/error-handling-patterns
-- async-python-patterns skill: https://skills.sh/wshobson/agents/async-python-patterns
+Wrapper de curl_cffi con:
+- TLS Fingerprint Rotation (4 perfiles distintos)
+- Chrome 124 stealth headers (Venice.ai config)
+- DNS flush antes de cada sesión (clean_scene)
+- Circuit Breaker + Retry con exponential backoff
+- Rate limiting por dominio + stealth delays
 
-USO BÁSICO:
+USO:
     from core.http_client import HttpClient
     
-    client = HttpClient()
-    response = client.get("https://www.fravega.com/api/graphql")
-    
-    # Async
-    async with AsyncHttpClient() as client:
-        response = await client.get("https://www.fravega.com")
+    with HttpClient(ghost_mode=True) as client:
+        client.clean_scene()   # Flush DNS
+        response = client.get("https://target.com")
 
 NUNCA usar `requests` directamente. SIEMPRE pasar por este módulo.
 """
 
 from __future__ import annotations
 
+import os
+import platform
+import subprocess
 import random
 import time
 import logging
@@ -41,42 +43,99 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 # ============================================================================
-# CONFIGURACIÓN DE BROWSERS PARA IMPERSONACIÓN
+# TLS FINGERPRINT ROTATION — 4 perfiles distintos
+# Cada perfil simula un browser/versión diferente para que cada sesión
+# tenga un fingerprint TLS único. Esto evita correlación por JA3.
 # ============================================================================
 
-# Versiones de Chrome populares para rotación
-# Ref: curl_cffi FAQ - usar versiones con market share alto
-CHROME_VERSIONS = [
-    "chrome",       # Siempre la última versión disponible
-    "chrome119",
-    "chrome120",
-    "chrome124",
+TLS_PROFILES = [
+    {
+        "name": "chrome124_win",
+        "impersonate": "chrome124",
+        "cipher_suites": "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:ECDHE-ECDSA-AES128-GCM-SHA256",
+        "tls_extensions": "0x0000:0x0005:0x000a:0x000b:0x000d:0x0017:0x0023:0x002b:0x002d:0x0033:0x3549",
+    },
+    {
+        "name": "chrome120_win",
+        "impersonate": "chrome120",
+        "cipher_suites": "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:ECDHE-RSA-AES128-GCM-SHA256",
+        "tls_extensions": "0x0000:0x000b:0x000a:0x0023:0x0010:0x0005:0x000d",
+    },
+    {
+        "name": "chrome119_win",
+        "impersonate": "chrome119",
+        "cipher_suites": "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:ECDHE-ECDSA-AES256-GCM-SHA384",
+        "tls_extensions": "0x0000:0x0005:0x000a:0x000d:0x0017:0x0023:0x002b:0x0033",
+    },
+    {
+        "name": "chrome_latest",
+        "impersonate": "chrome",
+        "cipher_suites": "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256",
+        "tls_extensions": "0x0000:0x0005:0x000a:0x000b:0x000d:0x0017:0x0023:0x002b:0x002d:0x0033",
+    },
 ]
 
-SAFARI_VERSIONS = [
-    "safari",
-    "safari_ios",
+# ============================================================================
+# STEALTH HEADER SETS — Rotación de headers como Chrome real
+# Cada set tiene variaciones sutiles (orden de accept, versión sec-ch-ua)
+# para que cada request parezca un usuario distinto.
+# ============================================================================
+
+STEALTH_HEADER_SETS = [
+    {   # Chrome 124 Windows — Perfil principal (Venice.ai)
+        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "accept-language": "es-AR,es;q=0.9,en-US;q=0.8,en;q=0.7",
+        "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="124", "Google Chrome";v="124"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": '"Windows"',
+        "sec-fetch-dest": "document",
+        "sec-fetch-mode": "navigate",
+        "sec-fetch-site": "none",
+        "sec-fetch-user": "?1",
+        "upgrade-insecure-requests": "1",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    },
+    {   # Chrome 120 Windows
+        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "accept-language": "es-419,es;q=0.9,en;q=0.8",
+        "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": '"Windows"',
+        "sec-fetch-dest": "document",
+        "sec-fetch-mode": "navigate",
+        "sec-fetch-site": "none",
+        "sec-fetch-user": "?1",
+        "upgrade-insecure-requests": "1",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    },
+    {   # Chrome 124 — variante con accept-encoding explícito
+        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+        "accept-language": "es-AR,es;q=0.9",
+        "sec-ch-ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": '"Windows"',
+        "sec-fetch-dest": "document",
+        "sec-fetch-mode": "navigate",
+        "sec-fetch-site": "same-origin",
+        "upgrade-insecure-requests": "1",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    },
 ]
 
-# Headers adicionales para parecer argentino
-ARGENTINA_HEADERS = {
-    "Accept-Language": "es-AR,es;q=0.9,en;q=0.8",
-    "Sec-Ch-Ua-Platform": '"Windows"',
-}
+# Delay aleatorio entre requests (más conservador para ghost mode)
+STEALTH_DELAY_MIN = 1.5
+STEALTH_DELAY_MAX = 4.0
 
-# ============================================================================
-# STEALTH CONFIG — Parámetros anti-detección
-# ============================================================================
-
-# Delay aleatorio entre requests (segundos)
-STEALTH_DELAY_MIN = 0.8
-STEALTH_DELAY_MAX = 2.5
-
-# Límite de requests por dominio por hora
-DOMAIN_RATE_LIMIT_PER_HOUR = 300
+# Límite de requests por dominio por hora (reducido para IP residencial)
+DOMAIN_RATE_LIMIT_PER_HOUR = 120
 
 # Cuánto esperar si recibimos 429 (segundos)
 RATELIMIT_BACKOFF = 60
+
+# Legacy compat
+CHROME_VERSIONS = [p["impersonate"] for p in TLS_PROFILES]
+SAFARI_VERSIONS = ["safari", "safari_ios"]
+ARGENTINA_HEADERS = STEALTH_HEADER_SETS[0]  # Default al perfil principal
 
 
 # ============================================================================
@@ -206,7 +265,7 @@ class HttpClient:
     
     def __init__(
         self,
-        impersonate: str = "chrome",
+        impersonate: str = "chrome124",
         retry_count: int = 3,
         retry_delay: float = 0.5,
         retry_backoff: str = "exponential",
@@ -218,6 +277,7 @@ class HttpClient:
         http_version: Optional[str] = None,
         rotate_browser: bool = False,
         stealth_mode: bool = True,
+        ghost_mode: bool = False,
         delay_range: tuple[float, float] = (STEALTH_DELAY_MIN, STEALTH_DELAY_MAX),
         max_requests_per_hour: int = DOMAIN_RATE_LIMIT_PER_HOUR,
     ):
@@ -228,6 +288,14 @@ class HttpClient:
         self.http_version = http_version
         self.rotate_browser = rotate_browser
         
+        # 👻 Ghost mode: activar TODAS las medidas de evasión
+        self.ghost_mode = ghost_mode
+        if ghost_mode:
+            self.rotate_browser = True
+            stealth_mode = True
+            delay_range = (2.0, 5.0)  # Más lento = más humano
+            max_requests_per_hour = 80  # Más conservador
+        
         # 🛡️ Stealth config
         self.stealth_mode = stealth_mode
         self.delay_range = delay_range
@@ -235,38 +303,106 @@ class HttpClient:
         self._last_request_time: float = 0
         self._domain_request_counts: dict[str, list[float]] = defaultdict(list)
         self._warmed_domains: set[str] = set()
+        self._request_count: int = 0  # Contador para rotar TLS
+        self._current_tls_profile: dict = random.choice(TLS_PROFILES)
         
-        # Retry config (manual, ya que RetryStrategy no existe en v0.14)
+        # Retry config
         self.retry_count = retry_count
         self.retry_delay = retry_delay
         self.retry_backoff = retry_backoff
         self.retry_jitter = retry_jitter
         
-        # Headers base (argentinos + custom)
-        self.headers = {**ARGENTINA_HEADERS}
+        # Headers: rotar un set stealth completo
+        self.headers = dict(random.choice(STEALTH_HEADER_SETS))
         if extra_headers:
             self.headers.update(extra_headers)
         
         # Session con cookies persistentes
         self._session: Optional[Session] = None
     
+    # ── GHOST MODE: Métodos de evasión ──────────────────────────────────
+    
+    @staticmethod
+    def clean_scene() -> bool:
+        """
+        👻 Limpiar la escena antes de operar.
+        Ejecuta ipconfig /flushdns para eliminar cache DNS.
+        Esto previene que el ISP o un resolver correlacione tus queries DNS
+        con las requests HTTP que vienen después.
+        
+        Returns:
+            True si el flush fue exitoso, False si falló.
+        """
+        system = platform.system()
+        try:
+            if system == "Windows":
+                result = subprocess.run(
+                    ["ipconfig", "/flushdns"],
+                    capture_output=True, text=True, timeout=10
+                )
+                success = result.returncode == 0
+            elif system == "Darwin":  # macOS
+                result = subprocess.run(
+                    ["sudo", "dscacheutil", "-flushcache"],
+                    capture_output=True, text=True, timeout=10
+                )
+                success = result.returncode == 0
+            else:  # Linux
+                result = subprocess.run(
+                    ["sudo", "systemd-resolve", "--flush-caches"],
+                    capture_output=True, text=True, timeout=10
+                )
+                success = result.returncode == 0
+            
+            if success:
+                logger.info("👻 DNS cache flushed — escena limpia")
+            else:
+                logger.warning(f"⚠️ DNS flush returned: {result.stderr.strip()}")
+            return success
+        except Exception as e:
+            logger.warning(f"⚠️ No se pudo limpiar DNS: {e}")
+            return False
+    
+    def _rotate_tls_profile(self) -> None:
+        """
+        👻 Rotar perfil TLS cada N requests.
+        Cambia cipher suites + extensions + impersonation target
+        para que cada bloque de requests tenga un fingerprint distinto.
+        """
+        self._request_count += 1
+        # Rotar cada 5-10 requests (aleatorio para no ser predecible)
+        rotate_interval = random.randint(5, 10)
+        if self._request_count % rotate_interval == 0:
+            old_profile = self._current_tls_profile["name"]
+            self._current_tls_profile = random.choice(TLS_PROFILES)
+            # Rotar headers también
+            self.headers = dict(random.choice(STEALTH_HEADER_SETS))
+            # Forzar recrear session con nuevo fingerprint
+            self.close()
+            logger.info(
+                f"👻 TLS rotado: {old_profile} → {self._current_tls_profile['name']} "
+                f"(request #{self._request_count})"
+            )
+    
     def _get_browser(self) -> str:
-        """Obtener browser para impersonar (fijo o rotado)."""
-        if self.rotate_browser:
-            return random.choice(CHROME_VERSIONS)
+        """Obtener browser para impersonar (del perfil TLS activo o rotado)."""
+        if self.rotate_browser or self.ghost_mode:
+            return self._current_tls_profile["impersonate"]
         return self.impersonate
     
     def _ensure_session(self) -> Session:
-        """Crear session si no existe."""
+        """Crear session si no existe (con perfil TLS actual)."""
         if self._session is None:
+            browser = self._get_browser()
             kwargs: dict[str, Any] = {
-                "impersonate": self._get_browser(),
+                "impersonate": browser,
                 "headers": self.headers,
                 "timeout": self.timeout,
             }
             if self.proxy:
                 kwargs["proxy"] = self.proxy
             self._session = Session(**kwargs)
+            logger.debug(f"🔧 Session creada: {browser} | TLS: {self._current_tls_profile['name']}")
         return self._session
     
     def _get_domain(self, url: str) -> str:
@@ -345,11 +481,15 @@ class HttpClient:
             logger.warning(f"⚠️ Error warming {domain}: {e}")
     
     def reset_session(self) -> None:
-        """🛡️ Rotar sesión: cerrar la actual y crear una nueva con otro browser."""
+        """👻 Rotar sesión: nuevo browser + nuevo TLS profile + nuevos headers."""
         self.close()
         self._warmed_domains.clear()
-        if self.rotate_browser:
-            logger.info(f"🔄 Sesión rotada, nuevo browser: {self._get_browser()}")
+        self._current_tls_profile = random.choice(TLS_PROFILES)
+        self.headers = dict(random.choice(STEALTH_HEADER_SETS))
+        logger.info(
+            f"🔄 Sesión rotada → {self._current_tls_profile['name']} "
+            f"| UA: ...{self.headers.get('user-agent', '')[-20:]}"
+        )
     
     def get(self, url: str, **kwargs) -> Any:
         """GET request con impersonación + retry + circuit breaker."""
@@ -360,12 +500,16 @@ class HttpClient:
         return self._request("POST", url, **kwargs)
     
     def _request(self, method: str, url: str, **kwargs) -> Any:
-        """Request interno con Stealth + Circuit Breaker + Retry manual."""
+        """Request interno con Ghost Mode + Circuit Breaker + Retry."""
         if not self.circuit_breaker.can_execute():
             raise CircuitBreakerOpenError(
                 f"Circuit Breaker OPEN — API {url} está caída. "
                 f"Reintentando en {self.circuit_breaker.recovery_timeout}s"
             )
+        
+        # 👻 Ghost mode: rotar TLS si toca
+        if self.ghost_mode:
+            self._rotate_tls_profile()
         
         # 🛡️ Anti-detección: delay + rate limit check
         self._stealth_delay()

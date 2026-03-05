@@ -13,6 +13,8 @@ import requests
 import datetime
 import webbrowser
 import re
+import random
+import time
 from dotenv import load_dotenv
 from amadeus import Client, ResponseError
 
@@ -63,6 +65,44 @@ def fecha_bonita(fecha_str):
     MESES = {1:'ene',2:'feb',3:'mar',4:'abr',5:'may',6:'jun',7:'jul',8:'ago',9:'sep',10:'oct',11:'nov',12:'dic'}
     d = date.fromisoformat(fecha_str)
     return f"{DIAS_ES[d.weekday()]} {d.day} {MESES[d.month]}"
+
+
+# ─── STEALTH UTILITIES ────────────────────────────────────────────────────────────
+
+def pre_flight_check():
+    """
+    🛡️ Verificación pre-vuelo: muestra la IP actual y advierte si hay riesgo.
+    Usa api.ipify.org para obtener la IP pública.
+    """
+    print("\n  🛡️ PRE-FLIGHT CHECK")
+    print("  " + "─" * 45)
+    try:
+        r = requests.get("https://api.ipify.org?format=json", timeout=5)
+        ip = r.json().get("ip", "desconocida")
+        print(f"  🌐 IP pública actual: {ip}")
+        
+        # Verificar si es IP de datacenter conocido (heurística básica)
+        dc_prefixes = ["34.", "35.", "104.", "142.", "172.217.", "20.", "52.", "54."]
+        is_dc = any(ip.startswith(p) for p in dc_prefixes)
+        if is_dc:
+            print("  ⚠️  ADVERTENCIA: Tu IP parece de datacenter/VPN.")
+            print("  ⚠️  Recomendación: Desconectá la VPN y usá tu IP residencial.")
+        else:
+            print("  ✅ IP residencial detectada — perfil bajo")
+        
+        return ip
+    except Exception as e:
+        print(f"  ⚠️ No se pudo verificar IP: {e}")
+        return None
+
+
+def human_delay(min_sec=2.0, max_sec=5.0):
+    """
+    👻 Delay humano entre búsquedas.
+    Simula el tiempo que un usuario real tardaría entre una búsqueda y otra.
+    """
+    delay = random.uniform(min_sec, max_sec)
+    time.sleep(delay)
 
 
 # ─── BASE DE DATOS ──────────────────────────────────────────────────────────
@@ -406,6 +446,9 @@ def buscar_amadeus(usd_to_ars, timestamp):
                     print(f"❌ {e}")
                 except Exception as e:
                     print(f"❌ {e}")
+                
+                # 👻 Delay humano entre búsquedas a Amadeus
+                human_delay(1.0, 3.0)
     
     return vuelos
 
@@ -496,6 +539,7 @@ def buscar_flybondi(usd_to_ars, timestamp):
         except Exception as e:
             print(f"❌ {e}")
     
+    # Cleanup explícito
     try:
         client.close()
     except:
@@ -543,8 +587,18 @@ def buscar_vuelos():
     print(f"  👥 {ADULTOS} pasajeros")
     print(f"  🛫 Orígenes: {', '.join(ORIGENES)}")
     print(f"  🎯 Destinos: {', '.join(DESTINOS.keys())}")
-    print(f"  🔢 Total búsquedas: {len(ORIGENES) * len(DESTINOS) * len(FECHAS)}")
+    print(f"  📢 Total búsquedas: {len(ORIGENES) * len(DESTINOS) * len(FECHAS)}")
     print("=" * 60)
+    
+    # 0. Pre-flight check (IP + stealth)
+    pre_flight_check()
+    
+    # 0.5 Clean DNS cache
+    try:
+        from core.http_client import HttpClient
+        HttpClient.clean_scene()
+    except Exception:
+        pass
     
     # 1. Init
     init_db()
