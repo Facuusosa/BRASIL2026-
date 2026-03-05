@@ -471,7 +471,6 @@ def buscar_flybondi(usd_to_ars, timestamp):
         extra_headers={
             "Origin": "https://flybondi.com",
             "Referer": "https://flybondi.com/",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         }
     )
     
@@ -488,28 +487,46 @@ def buscar_flybondi(usd_to_ars, timestamp):
                 # Warm session primero
                 client.warm_session("https://flybondi.com")
                 
-                # Intentar la página de resultados de Flybondi
+                # URL con parámetros REALES capturados de Chrome DevTools
+                # Flybondi usa fromCityCode/toCityCode, NO origin/destination
                 search_url = (
                     f"https://flybondi.com/ar/search/results"
-                    f"?origin=BUE&destination={dest}"
+                    f"?adults={ADULTOS}&children=0&infants=0"
+                    f"&currency=USD"
                     f"&departureDate={fecha_ida}&returnDate={fecha_vuelta}"
-                    f"&adults={ADULTOS}&children=0&infants=0"
+                    f"&fromCityCode=BUE&toCityCode={dest}"
+                    f"&utm_origin=search_bar"
                 )
                 
-                r = client.get(search_url, timeout=20)
+                # Cookie de sesión Flybondi (formato capturado)
+                import uuid
+                session_id = f"SFO-{uuid.uuid4()}"
+                
+                r = client.get(
+                    search_url,
+                    timeout=20,
+                    cookies={"FBSessionX-ar-ibe": session_id}
+                )
                 
                 if r.status_code == 200:
-                    # Flybondi es SPA — los precios no están en el HTML
-                    # pero verificamos que no nos bloquearon
-                    html_len = len(r.text)
-                    has_prices = any(kw in r.text for kw in ['price', 'fare', 'ARS', 'precio'])
+                    html_text = r.text
+                    html_len = len(html_text)
                     
-                    if has_prices:
-                        print(f"✅ Página cargada ({html_len} bytes) — precios detectados en HTML")
+                    # Detectar si la SPA cargó correctamente
+                    has_flight_search = 'flight-search' in html_text or 'vendors~flight-search' in html_text
+                    has_react = 'bundle.' in html_text and '__NEXT_DATA__' not in html_text
+                    has_title = 'Elegí tu vuelo' in html_text
+                    
+                    if has_title and html_len > 50000:
+                        total_encontrados += 1  # Contamos como éxito de conexión
+                        if has_flight_search:
+                            print(f"✅ SPA OK ({html_len//1024} KB) — JS flight-search detectado")
+                        else:
+                            print(f"✅ SPA OK ({html_len//1024} KB) — precios vía JS (requiere Playwright para extraer)")
                     elif html_len > 5000:
-                        print(f"⚠️ SPA cargada ({html_len} bytes) — precios vía JS (no extraíbles)")
+                        print(f"⚠️ HTML parcial ({html_len//1024} KB) — posible carga incompleta")
                     else:
-                        print(f"⚠️ Respuesta muy corta ({html_len} bytes) — posible bloqueo")
+                        print(f"⚠️ Respuesta corta ({html_len} bytes) — posible bloqueo")
                         errores_red += 1
                         
                 elif r.status_code == 403:
@@ -534,9 +551,11 @@ def buscar_flybondi(usd_to_ars, timestamp):
             human_delay(2.0, 4.0)
     
     # Resumen de Flybondi
-    if errores_red > 0 and total_encontrados == 0:
+    if total_encontrados > 0:
+        print(f"  ✅ Flybondi: {total_encontrados} páginas cargadas OK (SPA — precios vía JS)")
+        print(f"  💡 Para extraer precios reales: necesitamos Playwright (headless browser)")
+    elif errores_red > 0:
         print(f"  ⚠️ [!] Flybondi: {errores_red} errores de red — posible bloqueo de IP o cambio de estructura")
-        print(f"  💡 Tip: Flybondi es SPA, los precios se cargan por JS/GraphQL protegido por WAF")
     
     # Cleanup explícito
     try:
