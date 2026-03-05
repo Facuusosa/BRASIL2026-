@@ -1,0 +1,640 @@
+"""
+✈️ BRASIL2026 — Flight Tracker Optimizado
+Integra: Amadeus API + Flybondi scraping stealth + SQLite + Dashboard + Alertas
+
+Basado en la arquitectura Odiseo (proyectos vuelos/ y FRAVEGA/)
+"""
+
+import os
+import sys
+import json
+import sqlite3
+import requests
+import datetime
+import webbrowser
+import re
+from dotenv import load_dotenv
+from amadeus import Client, ResponseError
+
+# ─── CONFIGURACIÓN ──────────────────────────────────────────────────────────
+
+load_dotenv()
+DATA_DIR = "data"
+DB_FILE = os.path.join(DATA_DIR, "brasil2026.db")
+DASHBOARD_FILE = "dashboard.html"
+
+if not os.path.exists(DATA_DIR):
+    os.makedirs(DATA_DIR)
+
+# Amadeus — por defecto usa TEST. Para producción: hostname='production'
+amadeus = Client(
+    client_id=os.getenv("AMADEUS_CLIENT_ID"),
+    client_secret=os.getenv("AMADEUS_CLIENT_SECRET")
+)
+
+DESTINOS = {
+    "FLN": "Florianópolis",
+    "GIG": "Río de Janeiro",
+    "SSA": "Salvador de Bahía",
+    "BPS": "Porto Seguro",
+    "NAT": "Natal",
+    "MCZ": "Maceió",
+    "REC": "Recife",
+    "FOR": "Fortaleza",
+}
+
+ORIGENES = ["EZE", "AEP"]  # Multi-aeropuerto: Ezeiza + Aeroparque
+
+# 4 combinaciones de fechas (siempre 7 noches)
+FECHAS = [
+    ("2026-04-06", "2026-04-13"),
+    ("2026-04-07", "2026-04-14"),
+    ("2026-04-08", "2026-04-15"),
+    ("2026-04-09", "2026-04-16"),
+]
+
+ADULTOS = 2
+
+# Nombres de días para mostrar en el dashboard
+DIAS_ES = {0:'lun',1:'mar',2:'mié',3:'jue',4:'vie',5:'sáb',6:'dom'}
+def fecha_bonita(fecha_str):
+    """'2026-04-06' → 'lun 6 abr'"""
+    from datetime import date
+    MESES = {1:'ene',2:'feb',3:'mar',4:'abr',5:'may',6:'jun',7:'jul',8:'ago',9:'sep',10:'oct',11:'nov',12:'dic'}
+    d = date.fromisoformat(fecha_str)
+    return f"{DIAS_ES[d.weekday()]} {d.day} {MESES[d.month]}"
+
+
+# ─── BASE DE DATOS ──────────────────────────────────────────────────────────
+
+def init_db():
+    """Inicializa la base de datos SQLite."""
+    conn = sqlite3.connect(DB_FILE)
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS vuelos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            destino TEXT NOT NULL,
+            destino_nombre TEXT DEFAULT '',
+            origen TEXT DEFAULT 'EZE',
+            aerolinea TEXT NOT NULL,
+            aerolinea_nombre TEXT DEFAULT '',
+            precio_usd REAL NOT NULL,
+            precio_ars REAL NOT NULL,
+            duracion_ida TEXT DEFAULT '',
+            duracion_vuelta TEXT DEFAULT '',
+            escalas_ida INTEGER DEFAULT 0,
+            escalas_vuelta INTEGER DEFAULT 0,
+            es_directo INTEGER DEFAULT 0,
+            segmentos_ida TEXT DEFAULT '',
+            segmentos_vuelta TEXT DEFAULT '',
+            hora_salida TEXT DEFAULT '',
+            hora_llegada TEXT DEFAULT '',
+            fecha_ida TEXT DEFAULT '',
+            fecha_vuelta TEXT DEFAULT '',
+            fuente TEXT DEFAULT 'amadeus',
+            timestamp TEXT NOT NULL,
+            UNIQUE(destino, origen, aerolinea, precio_usd, duracion_ida, fecha_ida, timestamp)
+        );
+
+        CREATE TABLE IF NOT EXISTS historial_precio (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            destino TEXT NOT NULL,
+            precio_min_usd REAL NOT NULL,
+            precio_min_ars REAL NOT NULL,
+            aerolinea TEXT DEFAULT '',
+            tipo_cambio REAL DEFAULT 0,
+            timestamp TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS alertas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            destino TEXT NOT NULL,
+            precio_anterior_usd REAL,
+            precio_nuevo_usd REAL,
+            variacion_pct REAL,
+            mensaje TEXT,
+            timestamp TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_vuelos_destino ON vuelos(destino);
+        CREATE INDEX IF NOT EXISTS idx_vuelos_precio ON vuelos(precio_usd);
+        CREATE INDEX IF NOT EXISTS idx_vuelos_timestamp ON vuelos(timestamp);
+        CREATE INDEX IF NOT EXISTS idx_historial_destino ON historial_precio(destino);
+    """)
+    # Migración: agregar columnas fecha_ida/fecha_vuelta si no existen (DB vieja)
+    try:
+        conn.execute("SELECT fecha_ida FROM vuelos LIMIT 1")
+    except sqlite3.OperationalError:
+        conn.execute("ALTER TABLE vuelos ADD COLUMN fecha_ida TEXT DEFAULT ''")
+        conn.execute("ALTER TABLE vuelos ADD COLUMN fecha_vuelta TEXT DEFAULT ''")
+        conn.commit()
+    conn.close()
+
+
+def get_previous_best_prices():
+    """Obtiene los mejores precios anteriores por destino."""
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute("""
+        SELECT destino, MIN(precio_min_usd) as mejor_precio
+        FROM historial_precio
+        GROUP BY destino
+    """).fetchall()
+    conn.close()
+    return {row['destino']: row['mejor_precio'] for row in rows}
+
+
+def get_last_prices():
+    """Obtiene los precios de la última búsqueda por destino."""
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute("""
+        SELECT destino, precio_min_usd
+        FROM historial_precio
+        WHERE timestamp = (SELECT MAX(timestamp) FROM historial_precio)
+    """).fetchall()
+    conn.close()
+    return {row['destino']: row['precio_min_usd'] for row in rows}
+
+
+def save_vuelos(vuelos, timestamp):
+    """Guarda vuelos en la base de datos (batch insert con dedup)."""
+    conn = sqlite3.connect(DB_FILE)
+    for v in vuelos:
+        try:
+            conn.execute("""
+                INSERT OR IGNORE INTO vuelos 
+                (destino, destino_nombre, origen, aerolinea, aerolinea_nombre,
+                 precio_usd, precio_ars, duracion_ida, duracion_vuelta,
+                 escalas_ida, escalas_vuelta, es_directo,
+                 segmentos_ida, segmentos_vuelta,
+                 hora_salida, hora_llegada, fecha_ida, fecha_vuelta, fuente, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                v['destino'], v['destino_nombre'], v['origen'],
+                v['aerolinea'], v.get('aerolinea_nombre', ''),
+                v['precio_usd'], v['precio_ars'],
+                v.get('duracion_ida', ''), v.get('duracion_vuelta', ''),
+                v.get('escalas_ida', 0), v.get('escalas_vuelta', 0),
+                v.get('es_directo', 0),
+                v.get('segmentos_ida', ''), v.get('segmentos_vuelta', ''),
+                v.get('hora_salida', ''), v.get('hora_llegada', ''),
+                v.get('fecha_ida', ''), v.get('fecha_vuelta', ''),
+                v.get('fuente', 'amadeus'), timestamp
+            ))
+        except Exception as e:
+            pass  # Duplicados se ignoran
+    conn.commit()
+    conn.close()
+
+
+def save_historial(precios_por_destino, tipo_cambio, timestamp):
+    """Guarda el precio mínimo por destino en el historial."""
+    conn = sqlite3.connect(DB_FILE)
+    for destino, data in precios_por_destino.items():
+        conn.execute("""
+            INSERT INTO historial_precio 
+            (destino, precio_min_usd, precio_min_ars, aerolinea, tipo_cambio, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (destino, data['precio_usd'], data['precio_ars'],
+              data['aerolinea'], tipo_cambio, timestamp))
+    conn.commit()
+    conn.close()
+
+
+def save_alerta(destino, precio_ant, precio_nuevo, timestamp):
+    """Guarda una alerta de cambio de precio."""
+    variacion = ((precio_nuevo - precio_ant) / precio_ant) * 100
+    if abs(variacion) < 1:
+        return  # No alertar por cambios menores al 1%
+    
+    direccion = "📉 BAJÓ" if variacion < 0 else "📈 Subió"
+    mensaje = f"{direccion} {abs(variacion):.1f}% | {DESTINOS.get(destino, destino)}: USD {precio_ant:.0f} → USD {precio_nuevo:.0f}"
+    
+    conn = sqlite3.connect(DB_FILE)
+    conn.execute("""
+        INSERT INTO alertas (destino, precio_anterior_usd, precio_nuevo_usd, variacion_pct, mensaje, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (destino, precio_ant, precio_nuevo, variacion, mensaje, timestamp))
+    conn.commit()
+    conn.close()
+    
+    print(f"  🔔 ALERTA: {mensaje}")
+
+
+def get_historial_completo():
+    """Obtiene todo el historial para el gráfico."""
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute("""
+        SELECT destino, precio_min_usd, precio_min_ars, timestamp 
+        FROM historial_precio 
+        ORDER BY timestamp ASC
+    """).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_alertas_recientes(limit=20):
+    """Obtiene las alertas más recientes."""
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute("""
+        SELECT * FROM alertas ORDER BY timestamp DESC LIMIT ?
+    """, (limit,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+# ─── UTILIDADES ─────────────────────────────────────────────────────────────
+
+AEROLINEAS = {
+    "AR": "Aerolíneas Argentinas", "G3": "GOL", "JA": "JetSmart",
+    "FO": "Flybondi", "LA": "LATAM", "CM": "Copa Airlines",
+    "AV": "Avianca", "EK": "Emirates", "ET": "Ethiopian Airlines",
+    "TK": "Turkish Airlines", "AA": "American Airlines",
+    "UA": "United Airlines", "DL": "Delta", "IB": "Iberia",
+    "AF": "Air France", "KL": "KLM", "LH": "Lufthansa",
+    "AZ": "ITA Airways", "TP": "TAP Portugal",
+}
+
+
+def get_exchange_rate():
+    """Obtiene el tipo de cambio USD → ARS desde AwesomeAPI."""
+    try:
+        r = requests.get("https://economia.awesomeapi.com.br/json/last/USD-ARS", timeout=10)
+        return float(r.json()["USDARS"]["bid"])
+    except Exception as e:
+        print(f"  ⚠️ Error tipo de cambio: {e} — usando fallback 1400")
+        return 1400.0
+
+
+def formatear_duracion(duracion_iso):
+    """PT3H45M → '3h 45m'"""
+    if not duracion_iso:
+        return ""
+    duracion = duracion_iso.replace("PT", "")
+    horas, minutos = 0, 0
+    if "H" in duracion:
+        partes = duracion.split("H")
+        horas = int(partes[0])
+        duracion = partes[1] if len(partes) > 1 else ""
+    if "M" in duracion:
+        minutos = int(duracion.replace("M", ""))
+    if horas > 0 and minutos > 0:
+        return f"{horas}h {minutos}m"
+    elif horas > 0:
+        return f"{horas}h"
+    return f"{minutos}m"
+
+
+def formatear_hora(fecha_iso):
+    """2026-04-06T21:30:00 → '21:30'"""
+    if not fecha_iso:
+        return ""
+    try:
+        return fecha_iso.split("T")[1][:5]
+    except:
+        return ""
+
+
+def extraer_detalles_vuelo(offer):
+    """Extrae info detallada de un offer de Amadeus."""
+    itinerarios = offer.get('itineraries', [])
+    if len(itinerarios) < 2:
+        return {}
+    
+    ida = itinerarios[0]
+    vuelta = itinerarios[1]
+    
+    # Segmentos ida
+    seg_ida = ida.get('segments', [])
+    seg_vuelta = vuelta.get('segments', [])
+    
+    escalas_ida = len(seg_ida) - 1
+    escalas_vuelta = len(seg_vuelta) - 1
+    es_directo = (escalas_ida == 0 and escalas_vuelta == 0)
+    
+    # Formatear segmentos como texto legible
+    def fmt_segmentos(segs):
+        parts = []
+        for s in segs:
+            dep = s['departure']['iataCode']
+            arr = s['arrival']['iataCode']
+            carrier = s.get('carrierCode', '??')
+            num = s.get('number', '')
+            dur = formatear_duracion(s.get('duration', ''))
+            parts.append(f"{dep}→{arr} ({carrier}{num}, {dur})")
+        return " | ".join(parts)
+    
+    hora_salida = formatear_hora(seg_ida[0]['departure'].get('at', '')) if seg_ida else ''
+    hora_llegada = formatear_hora(seg_ida[-1]['arrival'].get('at', '')) if seg_ida else ''
+    
+    return {
+        'duracion_ida': formatear_duracion(ida.get('duration', '')),
+        'duracion_vuelta': formatear_duracion(vuelta.get('duration', '')),
+        'escalas_ida': escalas_ida,
+        'escalas_vuelta': escalas_vuelta,
+        'es_directo': 1 if es_directo else 0,
+        'segmentos_ida': fmt_segmentos(seg_ida),
+        'segmentos_vuelta': fmt_segmentos(seg_vuelta),
+        'hora_salida': hora_salida,
+        'hora_llegada': hora_llegada,
+    }
+
+
+# ─── BÚSQUEDA AMADEUS ──────────────────────────────────────────────────────
+
+def buscar_amadeus(usd_to_ars, timestamp):
+    """Busca vuelos en Amadeus para todos los orígenes, destinos y fechas."""
+    vuelos = []
+    total_combos = len(ORIGENES) * len(DESTINOS) * len(FECHAS)
+    combo_n = 0
+    
+    for fecha_ida, fecha_vuelta in FECHAS:
+        print(f"\n  📅 Fechas: {fecha_ida} → {fecha_vuelta}")
+        for origen in ORIGENES:
+            for code, nombre in DESTINOS.items():
+                combo_n += 1
+                print(f"  🔍 [{combo_n}/{total_combos}] {origen} → {code} ({nombre})...", end=" ", flush=True)
+                try:
+                    response = amadeus.shopping.flight_offers_search.get(
+                        originLocationCode=origen,
+                        destinationLocationCode=code,
+                        departureDate=fecha_ida,
+                        returnDate=fecha_vuelta,
+                        adults=ADULTOS,
+                        currencyCode='USD',
+                        max=10
+                    )
+                    
+                    seen = set()  # Deduplicar
+                    count = 0
+                    
+                    for offer in response.data:
+                        precio_usd = float(offer['price']['total'])
+                        aerolinea = offer['validatingAirlineCodes'][0]
+                        detalles = extraer_detalles_vuelo(offer)
+                        
+                        # Key de dedup: destino + aerolinea + precio + duración + fechas
+                        dedup_key = f"{code}-{aerolinea}-{precio_usd}-{detalles.get('duracion_ida','')}-{fecha_ida}"
+                        if dedup_key in seen:
+                            continue
+                        seen.add(dedup_key)
+                        
+                        vuelo = {
+                            'destino': code,
+                            'destino_nombre': nombre,
+                            'origen': origen,
+                            'aerolinea': aerolinea,
+                            'aerolinea_nombre': AEROLINEAS.get(aerolinea, aerolinea),
+                            'precio_usd': precio_usd,
+                            'precio_ars': round(precio_usd * usd_to_ars, 2),
+                            'fecha_ida': fecha_ida,
+                            'fecha_vuelta': fecha_vuelta,
+                            'fecha_ida_bonita': fecha_bonita(fecha_ida),
+                            'fecha_vuelta_bonita': fecha_bonita(fecha_vuelta),
+                            'fuente': 'amadeus',
+                            **detalles
+                        }
+                        vuelos.append(vuelo)
+                        count += 1
+                    
+                    print(f"✅ {count} vuelos")
+                    
+                except ResponseError as e:
+                    print(f"❌ {e}")
+                except Exception as e:
+                    print(f"❌ {e}")
+    
+    return vuelos
+
+
+# ─── BÚSQUEDA FLYBONDI (Stealth) ───────────────────────────────────────────
+
+def buscar_flybondi(usd_to_ars, timestamp):
+    """Intenta buscar vuelos en Flybondi usando scraping stealth."""
+    vuelos = []
+    
+    try:
+        from core.http_client import HttpClient
+    except ImportError:
+        print("  ⚠️ curl_cffi no disponible — omitiendo Flybondi")
+        return vuelos
+    
+    client = HttpClient(
+        impersonate="chrome",
+        retry_count=2,
+        stealth_mode=True,
+        extra_headers={
+            "Origin": "https://flybondi.com",
+            "Referer": "https://flybondi.com/",
+            "Accept": "application/json, text/plain, */*",
+        }
+    )
+    
+    # Flybondi solo opera desde BUE a ciertos destinos brasileños
+    flybondi_destinos = ["FLN"]  # Expandir según rutas reales
+    
+    for dest in flybondi_destinos:
+        print(f"  🔍 Flybondi BUE → {dest}...", end=" ", flush=True)
+        try:
+            # Warm session
+            client.warm_session("https://flybondi.com")
+            
+            # API de precios (endpoint capturado de investigaciones previas)
+            r = client.get(
+                "https://api-prod.flybondi.com/fb/travel/prices",
+                params={
+                    "origin": "BUE",
+                    "destination": dest,
+                    "departureDate": FECHA_IDA,
+                    "adults": ADULTOS,
+                    "children": 0,
+                    "infants": 0,
+                    "currency": "ARS"
+                },
+                timeout=15
+            )
+            
+            if r.status_code == 200:
+                data = r.json()
+                flights = data.get("outbound", []) if isinstance(data, dict) else data
+                
+                if isinstance(flights, list):
+                    for flight in flights:
+                        precio_ars = float(flight.get("price", 0))
+                        if precio_ars <= 0:
+                            continue
+                        precio_usd = round(precio_ars / usd_to_ars, 2)
+                        
+                        vuelos.append({
+                            'destino': dest,
+                            'destino_nombre': DESTINOS.get(dest, dest),
+                            'origen': 'BUE',
+                            'aerolinea': 'FO',
+                            'aerolinea_nombre': 'Flybondi',
+                            'precio_usd': precio_usd,
+                            'precio_ars': precio_ars,
+                            'duracion_ida': flight.get('duration', ''),
+                            'duracion_vuelta': '',
+                            'escalas_ida': 0,
+                            'escalas_vuelta': 0,
+                            'es_directo': 1,
+                            'segmentos_ida': f"BUE→{dest} (FO, directo)",
+                            'segmentos_vuelta': '',
+                            'hora_salida': flight.get('departureTime', ''),
+                            'hora_llegada': flight.get('arrivalTime', ''),
+                            'fuente': 'flybondi_direct',
+                        })
+                    print(f"✅ {len(flights)} vuelos")
+                else:
+                    print("⚠️ Formato inesperado")
+            else:
+                print(f"⚠️ HTTP {r.status_code}")
+                
+        except Exception as e:
+            print(f"❌ {e}")
+    
+    try:
+        client.close()
+    except:
+        pass
+    
+    return vuelos
+
+
+# ─── DASHBOARD ──────────────────────────────────────────────────────────────
+
+TEMPLATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard_template.html")
+
+def generar_dashboard(vuelos_actuales, historial, usd_to_ars, alertas, timestamp):
+    """Genera dashboard.html inyectando datos en el template HTML."""
+    
+    # Leer template
+    with open(TEMPLATE_FILE, "r", encoding="utf-8") as f:
+        html = f.read()
+    
+    # Cantidad de búsquedas históricas
+    total_historico = len(set(h['timestamp'][:16] for h in historial))
+    
+    # Reemplazar placeholders con datos reales
+    html = html.replace("__VUELOS_JSON__", json.dumps(vuelos_actuales, ensure_ascii=False))
+    html = html.replace("__HISTORIAL_JSON__", json.dumps(historial, ensure_ascii=False))
+    html = html.replace("__USD_TO_ARS__", str(round(usd_to_ars, 2)))
+    html = html.replace("__TIMESTAMP__", timestamp)
+    html = html.replace("__TOTAL_HISTORICO__", str(total_historico))
+    
+    # Escribir dashboard final
+    with open(DASHBOARD_FILE, "w", encoding="utf-8") as f:
+        f.write(html)
+
+
+# ─── MAIN ───────────────────────────────────────────────────────────────────
+
+def buscar_vuelos():
+    """Flujo principal de búsqueda."""
+    print("=" * 60)
+    print("  ✈️  BRASIL2026 — Flight Tracker v3")
+    print("=" * 60)
+    print(f"  📅 {len(FECHAS)} combinaciones de fechas:")
+    for fi, fv in FECHAS:
+        print(f"     {fi} → {fv} (7 noches)")
+    print(f"  👥 {ADULTOS} pasajeros")
+    print(f"  🛫 Orígenes: {', '.join(ORIGENES)}")
+    print(f"  🎯 Destinos: {', '.join(DESTINOS.keys())}")
+    print(f"  🔢 Total búsquedas: {len(ORIGENES) * len(DESTINOS) * len(FECHAS)}")
+    print("=" * 60)
+    
+    # 1. Init
+    init_db()
+    now = datetime.datetime.now()
+    timestamp = now.strftime("%Y-%m-%d %H:%M")
+    
+    # 2. Tipo de cambio
+    usd_to_ars = get_exchange_rate()
+    print(f"\n  💱 Tipo de cambio: 1 USD = {usd_to_ars:,.2f} ARS\n")
+    
+    # 3. Precios anteriores (para alertas)
+    prev_best = get_previous_best_prices()
+    
+    # 4. Buscar en Amadeus
+    print("── AMADEUS API ──────────────────────────────────")
+    vuelos_amadeus = buscar_amadeus(usd_to_ars, timestamp)
+    print(f"  Total Amadeus: {len(vuelos_amadeus)} vuelos únicos\n")
+    
+    # 5. Buscar en Flybondi (stealth)
+    print("── FLYBONDI (Stealth) ───────────────────────────")
+    vuelos_flybondi = buscar_flybondi(usd_to_ars, timestamp)
+    print(f"  Total Flybondi: {len(vuelos_flybondi)} vuelos\n")
+    
+    # 6. Combinar resultados
+    todos_vuelos = vuelos_amadeus + vuelos_flybondi
+    todos_vuelos.sort(key=lambda x: x['precio_usd'])
+    
+    print(f"── TOTAL: {len(todos_vuelos)} vuelos encontrados ──────────────")
+    
+    # 7. Guardar en DB
+    save_vuelos(todos_vuelos, timestamp)
+    
+    # 8. Calcular precio mínimo por destino y guardar historial
+    precios_por_destino = {}
+    for v in todos_vuelos:
+        d = v['destino']
+        if d not in precios_por_destino or v['precio_usd'] < precios_por_destino[d]['precio_usd']:
+            precios_por_destino[d] = {
+                'precio_usd': v['precio_usd'],
+                'precio_ars': v['precio_ars'],
+                'aerolinea': v['aerolinea'],
+            }
+    
+    save_historial(precios_por_destino, usd_to_ars, timestamp)
+    
+    # 9. Generar alertas
+    print("\n── ALERTAS ──────────────────────────────────────")
+    alertas_generadas = 0
+    for dest, data in precios_por_destino.items():
+        if dest in prev_best:
+            save_alerta(dest, prev_best[dest], data['precio_usd'], timestamp)
+            alertas_generadas += 1
+    if alertas_generadas == 0:
+        print("  Sin alertas (primera búsqueda o sin cambios significativos)")
+    
+    # 10. Generar dashboard
+    print("\n── DASHBOARD ────────────────────────────────────")
+    historial = get_historial_completo()
+    alertas = get_alertas_recientes()
+    generar_dashboard(todos_vuelos, historial, usd_to_ars, alertas, timestamp)
+    print(f"  ✅ Dashboard generado: {DASHBOARD_FILE}")
+    
+    # 11. Guardar JSON de respaldo
+    json_file = os.path.join(DATA_DIR, f"vuelos_{now.strftime('%Y-%m-%d_%H-%M')}.json")
+    with open(json_file, "w", encoding="utf-8") as f:
+        json.dump(todos_vuelos, f, indent=2, ensure_ascii=False)
+    
+    # 12. Resumen final
+    print("\n" + "=" * 60)
+    print("  📊 RESUMEN")
+    print("=" * 60)
+    
+    directos = [v for v in todos_vuelos if v.get('es_directo')]
+    print(f"  Vuelos totales:  {len(todos_vuelos)}")
+    print(f"  Vuelos directos: {len(directos)}")
+    print(f"  Fuentes:         Amadeus ({len(vuelos_amadeus)}) + Flybondi ({len(vuelos_flybondi)})")
+    
+    print(f"\n  🏆 TOP 5 MÁS BARATOS:")
+    for i, v in enumerate(todos_vuelos[:5], 1):
+        directo_tag = "✈ directo" if v.get('es_directo') else f"🔄 {v.get('escalas_ida', '?')} esc."
+        print(f"  {i}. {v['destino']} ({v['destino_nombre']}) — USD {v['precio_usd']:.0f} / ARS {v['precio_ars']:,.0f}")
+        print(f"     {v['aerolinea_nombre']} · {directo_tag} · {v.get('duracion_ida', '?')} · {v['origen']}")
+    
+    print(f"\n  💡 Dashboard: {os.path.realpath(DASHBOARD_FILE)}")
+    print(f"  💾 Base de datos: {os.path.realpath(DB_FILE)}")
+    print("=" * 60)
+    
+    # Abrir dashboard
+    webbrowser.open('file://' + os.path.realpath(DASHBOARD_FILE))
+
+
+if __name__ == "__main__":
+    buscar_vuelos()

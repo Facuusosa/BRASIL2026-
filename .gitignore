@@ -1,0 +1,21 @@
+# Credenciales
+.env
+
+# Base de datos
+data/*.db
+
+# Cache
+__pycache__/
+*.pyc
+
+# IDE
+.vscode/
+.idea/
+
+# Agentes/AI
+.agents/
+.gemini/
+
+# Sistema
+.DS_Store
+Thumbs.db

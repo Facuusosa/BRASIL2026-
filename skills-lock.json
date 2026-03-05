@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "skills": {
+    "agent-browser": {
+      "source": "inference-sh-9/skills",
+      "sourceType": "github",
+      "computedHash": "fc24bbdfee9781b4b1a90429471a4ec44ba99a1a65bf67301ac48ec244fbc7d8"
+    },
+    "agent-tools": {
+      "source": "inference-sh-9/skills",
+      "sourceType": "github",
+      "computedHash": "15d2ee25e4cd620e88227699d2c85a9ca873beaf4087db5efe0a44122e2e7c3b"
+    },
+    "ai-automation-workflows": {
+      "source": "inference-sh-9/skills",
+      "sourceType": "github",
+      "computedHash": "a5e3ab60590fef698e854de54e1711904604e55b67cd1ba6eb42698235a80ef2"
+    },
+    "api-design-principles": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "1ee396a9c4714df95f1a9f8d156395848e8bd0fac1d70920a0487e8526ec0e55"
+    },
+    "async-python-patterns": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "94215d2e0debaeb4b09261907c2436cc47d91fe2d65e297a1dc4146b5efd24d2"
+    },
+    "data-visualization": {
+      "source": "inference-sh-9/skills",
+      "sourceType": "github",
+      "computedHash": "1a8326b72461c4cb8c3d4c926d5d1f2d6643e36928ede475ce8529c2d3cfcdf4"
+    },
+    "debugging-strategies": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "53ae02ba7ffec2584adf682392c9a47eb169fd93d19770b7a265b14a8586f8b8"
+    },
+    "error-handling-patterns": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "6efcf6584de527e30fe20bef36638fa02d543ee8466fcbcd98c878b636016da0"
+    },
+    "fastapi-templates": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "0203bfffe99d99ad78e0efd8c0223737a211b97457b3270b694efb34f48153c4"
+    },
+    "prompt-engineering": {
+      "source": "inference-sh-9/skills",
+      "sourceType": "github",
+      "computedHash": "b7af5b298ea6229363400eff62ca05a3d51d0f76fae9008010282e6e1998044a"
+    },
+    "python-error-handling": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "c82529570288890c2af08bb197239e74ce56caec6576ccbfab5973dc24941dcc"
+    },
+    "python-executor": {
+      "source": "inference-sh-9/skills",
+      "sourceType": "github",
+      "computedHash": "94532ab1b580612053e77605dc1cdeed75f664cf1dbd6a3d25bef1d45a7c5bce"
+    },
+    "python-performance-optimization": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "05c283d97b1bc4fb033593af9d22095c716312fcc55840f2ef438a015e112865"
+    },
+    "python-project-structure": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "a9c8b41e1a906a59d574c34e889d655c5dcc5137d13528ba02e5da3943d87f5b"
+    },
+    "python-resilience": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "049e03c53aa322bf850281e44a0b267bed002fb02be8ae515d9569fd02dfa402"
+    },
+    "web-search": {
+      "source": "inference-sh-9/skills",
+      "sourceType": "github",
+      "computedHash": "05a69e1df97aac9dfc09b87630d684c828a45510356008f59c40ec5d006a9e0e"
+    }
+  }
+}

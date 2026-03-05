@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brasil 2026 · Flight Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --sidebar-bg: #0d1f1a;
+      --sidebar-accent: #14b87a;
+      --bg: #0a0f0d;
+      --surface: #111a16;
+      --surface2: #182420;
+      --surface3: #1e2d28;
+      --border: #1f3028;
+      --green: #14b87a;
+      --green2: #0fd98a;
+      --green-dim: rgba(20, 184, 122, 0.12);
+      --blue: #38bdf8;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --purple: #c084fc;
+      --text: #e8f5f0;
+      --text2: #7aada0;
+      --text3: #3d6057;
+      --sans: 'Inter', sans-serif;
+      --r: 16px;
+      --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: 230px;
+      min-width: 230px;
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 24px 0;
+    }
+
+    .logo {
+      padding: 0 20px 24px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+
+    .logo h1 {
+      font-size: 1.4rem;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      color: #fff;
+    }
+
+    .logo h1 em {
+      font-style: normal;
+      color: var(--green);
+    }
+
+    .logo p {
+      font-size: 0.68rem;
+      color: var(--text3);
+      margin-top: 3px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .nav-section {
+      padding: 0 12px;
+      margin-bottom: 24px;
+    }
+
+    .nav-label {
+      font-size: 0.58rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text3);
+      padding: 0 8px;
+      margin-bottom: 8px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 10px;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text2);
+      cursor: pointer;
+      transition: all 0.15s;
+      text-decoration: none;
+      margin-bottom: 2px;
+    }
+
+    .nav-item:hover {
+      background: var(--surface2);
+      color: var(--text);
+    }
+
+    .nav-item.active {
+      background: var(--green-dim);
+      color: var(--green);
+      font-weight: 700;
+    }
+
+    .nav-item .ni {
+      font-size: 0.95rem;
+      width: 22px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .sidebar-trip {
+      margin-top: auto;
+      padding: 16px 16px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .trip-box {
+      background: var(--surface2);
+      border-radius: 12px;
+      padding: 14px;
+      border: 1px solid var(--border);
+    }
+
+    .trip-box .lbl {
+      font-size: 0.58rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text3);
+      margin-bottom: 8px;
+    }
+
+    .trip-box .route {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+
+    .trip-box .details {
+      font-size: 0.7rem;
+      color: var(--text2);
+      margin-top: 5px;
+      line-height: 1.6;
+    }
+
+    /* ── CONTENT ── */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    /* TOPBAR */
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .page-heading {
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .page-heading em {
+      font-style: normal;
+      color: var(--green);
+    }
+
+    .page-sub {
+      font-size: 0.75rem;
+      color: var(--text2);
+      margin-top: 2px;
+    }
+
+    .topbar-chips {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .chip.green {
+      border-color: var(--green);
+      color: var(--green);
+      background: var(--green-dim);
+    }
+
+    .chip.blue {
+      color: var(--blue);
+    }
+
+    .pulse {
+      width: 6px;
+      height: 6px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: 0.2
+      }
+    }
+
+    /* STATS */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .scard {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      transition: border-color 0.2s;
+    }
+
+    .scard:hover {
+      border-color: var(--green);
+    }
+
+    .scard-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+      background: var(--surface2);
+    }
+
+    .scard-num {
+      font-size: 1.6rem;
+      font-weight: 900;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .scard-lbl {
+      font-size: 0.62rem;
+      color: var(--text3);
+      margin-top: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* SECTION */
+    .sec-title {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text3);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .sec-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* DEALS */
+    .deals-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+      gap: 12px;
+    }
+
+    .dcard {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 20px;
+      position: relative;
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+      overflow: hidden;
+    }
+
+    .dcard::after {
+      content: '';
+      position: absolute;
+      top: -40px;
+      right: -40px;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(20, 184, 122, 0.06) 0%, transparent 70%);
+    }
+
+    .dcard:hover {
+      transform: translateY(-3px);
+      border-color: var(--green);
+      box-shadow: 0 8px 40px rgba(20, 184, 122, 0.1);
+    }
+
+    .dcard.winner {
+      border-color: var(--green);
+      background: linear-gradient(135deg, var(--surface), rgba(20, 184, 122, 0.05));
+    }
+
+    .dcard-badge {
+      position: absolute;
+      top: 0;
+      right: 20px;
+      background: var(--green);
+      color: #000;
+      font-size: 0.55rem;
+      font-weight: 900;
+      letter-spacing: 1px;
+      padding: 3px 10px;
+      border-radius: 0 0 8px 8px;
+    }
+
+    .dcard-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 14px;
+    }
+
+    .dcard-dest {
+      font-size: 2.2rem;
+      font-weight: 900;
+      letter-spacing: -1.5px;
+      line-height: 1;
+    }
+
+    .dcard-city {
+      font-size: 0.7rem;
+      color: var(--text2);
+      margin-top: 2px;
+    }
+
+    .dcard-plane {
+      font-size: 2.5rem;
+      opacity: 0.08;
+      transform: rotate(-20deg);
+    }
+
+    .dcard-airline {
+      font-size: 0.72rem;
+      color: var(--blue);
+      font-weight: 600;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .src-tag {
+      font-size: 0.6rem;
+      color: var(--text3);
+      background: var(--surface2);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 0.6rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 20px;
+      margin-bottom: 10px;
+    }
+
+    .tag.dir {
+      background: var(--green-dim);
+      color: var(--green);
+      border: 1px solid rgba(20, 184, 122, 0.2);
+    }
+
+    .tag.stp {
+      background: rgba(251, 191, 36, 0.1);
+      color: var(--yellow);
+      border: 1px solid rgba(251, 191, 36, 0.2);
+    }
+
+    .tag.ovr {
+      background: rgba(248, 113, 113, 0.1);
+      color: var(--red);
+      border: 1px solid rgba(248, 113, 113, 0.2);
+    }
+
+    .dcard-route {
+      font-size: 0.68rem;
+      color: var(--text3);
+      margin-bottom: 14px;
+      line-height: 1.6;
+    }
+
+    .dcard-prices {
+      margin-bottom: 16px;
+    }
+
+    .price-ars {
+      font-size: 1.8rem;
+      font-weight: 900;
+      color: var(--green);
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+
+    .price-usd {
+      font-size: 0.82rem;
+      color: var(--text2);
+      margin-top: 3px;
+    }
+
+    .price-pp {
+      font-size: 0.65rem;
+      color: var(--text3);
+      margin-top: 2px;
+    }
+
+    .dcard-trend {
+      font-size: 0.7rem;
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+
+    .dcard-trend.dn {
+      color: var(--green);
+    }
+
+    .dcard-trend.up {
+      color: var(--red);
+    }
+
+    .buy-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .bbtn {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: all 0.15s;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .b-ar {
+      background: rgba(56, 189, 248, 0.1);
+      color: var(--blue);
+      border-color: rgba(56, 189, 248, 0.2);
+    }
+
+    .b-ar:hover {
+      background: rgba(56, 189, 248, 0.18);
+    }
+
+    .b-fly {
+      background: rgba(251, 191, 36, 0.1);
+      color: var(--yellow);
+      border-color: rgba(251, 191, 36, 0.2);
+    }
+
+    .b-fly:hover {
+      background: rgba(251, 191, 36, 0.18);
+    }
+
+    .b-jet {
+      background: rgba(192, 132, 252, 0.1);
+      color: var(--purple);
+      border-color: rgba(192, 132, 252, 0.2);
+    }
+
+    .b-jet:hover {
+      background: rgba(192, 132, 252, 0.18);
+    }
+
+    .b-gol {
+      background: var(--green-dim);
+      color: var(--green);
+      border-color: rgba(20, 184, 122, 0.2);
+    }
+
+    .b-gol:hover {
+      background: rgba(20, 184, 122, 0.18);
+    }
+
+    .b-dsp {
+      background: rgba(248, 113, 113, 0.1);
+      color: var(--red);
+      border-color: rgba(248, 113, 113, 0.2);
+    }
+
+    .b-dsp:hover {
+      background: rgba(248, 113, 113, 0.18);
+    }
+
+    /* CHART */
+    .chart-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 20px;
+    }
+
+    .chart-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .chart-head h3 {
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .chart-note {
+      font-size: 0.65rem;
+      color: var(--text3);
+    }
+
+    /* TABLE */
+    .tbox {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+    }
+
+    .thead-ctrl {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .ctrl {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 12px;
+      border-radius: 8px;
+      font-family: var(--sans);
+      font-size: 0.74rem;
+      outline: none;
+    }
+
+    .ctrl:focus {
+      border-color: var(--green);
+    }
+
+    .ctrl::placeholder {
+      color: var(--text3);
+    }
+
+    .fbtn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text2);
+      padding: 7px 12px;
+      border-radius: 8px;
+      font-size: 0.72rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: var(--sans);
+    }
+
+    .fbtn:hover {
+      border-color: var(--green);
+      color: var(--green);
+    }
+
+    .fbtn.on {
+      background: var(--green-dim);
+      border-color: var(--green);
+      color: var(--green);
+      font-weight: 700;
+    }
+
+    .rcnt {
+      font-size: 0.68rem;
+      color: var(--text3);
+      margin-left: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead th {
+      padding: 10px 14px;
+      background: var(--surface2);
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text3);
+      font-weight: 600;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    tbody td {
+      padding: 11px 14px;
+      border-top: 1px solid var(--border);
+      font-size: 0.78rem;
+      vertical-align: middle;
+    }
+
+    tbody tr:hover {
+      background: var(--surface2);
+    }
+
+    .tc {
+      font-weight: 800;
+      font-size: 0.9rem;
+    }
+
+    .tn {
+      font-size: 0.62rem;
+      color: var(--text3);
+    }
+
+    .ta {
+      font-weight: 600;
+    }
+
+    .ts {
+      font-size: 0.6rem;
+      color: var(--text3);
+    }
+
+    .tars {
+      font-weight: 800;
+      color: var(--green);
+    }
+
+    .tusd {
+      font-size: 0.7rem;
+      color: var(--text2);
+    }
+
+    .tpp {
+      font-size: 0.6rem;
+      color: var(--text3);
+      display: block;
+    }
+
+    .dover {
+      color: var(--red);
+      font-weight: 700;
+    }
+
+    .tup {
+      color: var(--red);
+      font-weight: 700;
+      font-size: 0.7rem;
+    }
+
+    .tdn {
+      color: var(--green);
+      font-weight: 700;
+      font-size: 0.7rem;
+    }
+
+    .tfl {
+      color: var(--text3);
+      font-size: 0.7rem;
+    }
+
+    .mb {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .mb a {
+      font-size: 0.58rem;
+      font-weight: 700;
+      padding: 3px 7px;
+      border-radius: 5px;
+      text-decoration: none;
+      border: 1px solid transparent;
+    }
+
+    .b-gf {
+      background: rgba(56, 189, 248, 0.1);
+      color: var(--blue);
+      border-color: rgba(56, 189, 248, 0.2);
+    }
+
+    .b-gf:hover {
+      background: rgba(56, 189, 248, 0.18);
+    }
+
+    .b-kyk {
+      background: rgba(251, 191, 36, 0.1);
+      color: var(--yellow);
+      border-color: rgba(251, 191, 36, 0.2);
+    }
+
+    .b-kyk:hover {
+      background: rgba(251, 191, 36, 0.18);
+    }
+
+    .nav-dest-count {
+      font-size: 0.6rem;
+      color: var(--text3);
+      margin-left: auto;
+      font-weight: 400;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">
+      <h1>Brasil<em>2026</em></h1>
+      <p>Flight Tracker</p>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Menu</div>
+      <a class="nav-item active" id="nav-vuelos" onclick="scrollSec('dgrid')"><span class="ni">✈</span> Vuelos</a>
+      <a class="nav-item" id="nav-hist" onclick="scrollSec('chart')"><span class="ni">📈</span> Historial</a>
+      <a class="nav-item" id="nav-tabla" onclick="scrollSec('tb')"><span class="ni">📋</span> Tabla</a>
+    </div>
+
+    <div class="nav-section" id="nav-dests">
+      <div class="nav-label">Destinos</div>
+      <a class="nav-item active" id="nav-ALL" onclick="goTo('')"><span class="ni">🌎</span> Ver todos</a>
+      <a class="nav-item" id="nav-FLN" onclick="goTo('FLN')"><span class="ni">🏖</span> Florianópolis <span
+          class="nav-dest-count" id="cnt-FLN"></span></a>
+      <a class="nav-item" id="nav-GIG" onclick="goTo('GIG')"><span class="ni">🌴</span> Río de Janeiro <span
+          class="nav-dest-count" id="cnt-GIG"></span></a>
+      <a class="nav-item" id="nav-SSA" onclick="goTo('SSA')"><span class="ni">🎵</span> Salvador <span
+          class="nav-dest-count" id="cnt-SSA"></span></a>
+      <a class="nav-item" id="nav-FOR" onclick="goTo('FOR')"><span class="ni">🌊</span> Fortaleza <span
+          class="nav-dest-count" id="cnt-FOR"></span></a>
+      <a class="nav-item" id="nav-REC" onclick="goTo('REC')"><span class="ni">🎭</span> Recife <span
+          class="nav-dest-count" id="cnt-REC"></span></a>
+      <a class="nav-item" id="nav-NAT" onclick="goTo('NAT')"><span class="ni">🏝</span> Natal <span
+          class="nav-dest-count" id="cnt-NAT"></span></a>
+      <a class="nav-item" id="nav-MCZ" onclick="goTo('MCZ')"><span class="ni">🌅</span> Maceió <span
+          class="nav-dest-count" id="cnt-MCZ"></span></a>
+      <a class="nav-item" id="nav-BPS" onclick="goTo('BPS')"><span class="ni">⚓</span> Porto Seguro <span
+          class="nav-dest-count" id="cnt-BPS"></span></a>
+    </div>
+
+    <div class="sidebar-trip">
+      <div class="trip-box">
+        <div class="lbl">Tu viaje</div>
+        <div class="route">BUE → Brasil</div>
+        <div class="details">6-9 ABR → 13-16 ABR 2026<br>7 noches · 2 pasajeros · 4 fechas<br>EZE / AEP</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="content">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div>
+        <div class="page-heading">Mejor precio a <em>Brasil</em></div>
+        <div class="page-sub" id="psub">Cargando...</div>
+      </div>
+      <div class="topbar-chips">
+        <div class="chip blue">💵 USD 1 = <strong id="hrate" style="margin-left:4px">—</strong> ARS</div>
+        <div class="chip green">
+          <div class="pulse"></div><span id="hts">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-row">
+      <div class="scard">
+        <div class="scard-icon">✈</div>
+        <div>
+          <div class="scard-num" id="st" style="color:var(--green)">—</div>
+          <div class="scard-lbl">Vuelos encontrados</div>
+        </div>
+      </div>
+      <div class="scard">
+        <div class="scard-icon">🎯</div>
+        <div>
+          <div class="scard-num" id="sd" style="color:var(--blue)">—</div>
+          <div class="scard-lbl">Vuelos directos</div>
+        </div>
+      </div>
+      <div class="scard">
+        <div class="scard-icon">💰</div>
+        <div>
+          <div class="scard-num" id="sb" style="color:var(--yellow)">—</div>
+          <div class="scard-lbl">Mejor precio USD</div>
+        </div>
+      </div>
+      <div class="scard">
+        <div class="scard-icon">📍</div>
+        <div>
+          <div class="scard-num" id="sdest" style="color:var(--red)">—</div>
+          <div class="scard-lbl">Destinos</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DEALS -->
+    <div class="sec-title">🏆 Mejores precios por destino</div>
+    <div class="deals-grid" id="dgrid"></div>
+
+    <!-- CHART -->
+    <div class="sec-title">📈 Evolución de precios</div>
+    <div class="chart-box">
+      <div class="chart-head">
+        <h3>Precio mínimo histórico (ARS · 2 pax)</h3>
+        <span class="chart-note" id="cnote">—</span>
+      </div>
+      <canvas id="chart" height="75"></canvas>
+    </div>
+
+    <!-- TABLE -->
+    <div class="sec-title">📋 Todos los vuelos</div>
+    <div class="tbox">
+      <div class="thead-ctrl">
+        <input class="ctrl" id="fd" placeholder="🔍 Destino" oninput="rt()" style="width:105px">
+        <input class="ctrl" id="fa" placeholder="✈ Aerolínea" oninput="rt()" style="width:125px">
+        <button class="fbtn" id="bdir" onclick="tf('dir')">✈ Solo directos</button>
+        <button class="fbtn" id="bmax" onclick="tf('max')">⏱ Máx 5hs</button>
+        <select class="ctrl" id="fs" onchange="rt()">
+          <option value="pa">Precio ↑</option>
+          <option value="pd">Precio ↓</option>
+          <option value="da">Duración ↑</option>
+        </select>
+        <span class="rcnt" id="rc"></span>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Destino</th>
+              <th>Origen</th>
+              <th>Fechas</th>
+              <th>Aerolínea</th>
+              <th>Tipo</th>
+              <th>Duración</th>
+              <th>Salida</th>
+              <th style="text-align:right">USD total</th>
+              <th style="text-align:right">ARS total</th>
+              <th style="text-align:right">Por persona</th>
+              <th>Tend.</th>
+              <th>Comprar</th>
+            </tr>
+          </thead>
+          <tbody id="tb"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const VUELOS = __VUELOS_JSON__;
+    const HISTORIAL = __HISTORIAL_JSON__;
+    const USDARS = __USD_TO_ARS__;
+    const TS = "__TIMESTAMP__";
+    const HISTCNT = __TOTAL_HISTORICO__;
+    const PAX = 2;
+    const CLR = { FLN: "#14b87a", GIG: "#38bdf8", SSA: "#c084fc", FOR: "#fbbf24", NAT: "#f87171", REC: "#fb923c", MCZ: "#22d3ee", BPS: "#a3e635" };
+
+    const pm = s => { if (!s) return 9999; const h = (s.match(/(\d+)h/) || [0, 0])[1]; const m = (s.match(/(\d+)m/) || [0, 0])[1]; return +h * 60 + +m; };
+    const fa = n => '$ ' + Math.round(n).toLocaleString('es-AR');
+    const fu = n => 'USD ' + parseFloat(n).toFixed(0);
+    const lk = v => {
+      const d = v.destino, o = v.origen || 'EZE';
+      const fi = v.fecha_ida || '2026-04-06', fv = v.fecha_vuelta || '2026-04-13';
+      const gf = `https://www.google.com/travel/flights/search#flt=${o}.${d}.${fi}*${d}.${o}.${fv};c:ARS;e:1;px:${PAX};sd:1;t:f`;
+      const ky = `https://www.kayak.com.ar/flights/${o}-${d}/${fi}/${fv}/${PAX}adults?sort=bestflight_a`;
+      const dsp = `https://www.despegar.com.ar/shop/flights/results/roundtrip/${o}/${d}/${fi}/${fv}/${PAX}/0/0`;
+      const fly = `https://flybondi.com/ar/search/results?origin=BUE&destination=${d}&departureDate=${fi}&returnDate=${fv}&adults=${PAX}`;
+      const jet = `https://jetsmart.com/ar/es/v2/booking/search?departure1=${o}&arrival1=${d}&date1=${fi}&departure2=${d}&arrival2=${o}&date2=${fv}&adt=${PAX}&chd=0&inf=0`;
+      return { gf, ky, dsp, fly, jet };
+    };
+
+    let activeDest = '';
+    const F = { dir: false, max: true };
+    function tf(k) { F[k] = !F[k]; document.getElementById('b' + k).classList.toggle('on', F[k]); rt(); renderDeals(activeDest); }
+
+    function scrollSec(id) {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function goTo(d) {
+      activeDest = d;
+      document.getElementById('fd').value = d;
+      // Update sidebar active states
+      document.querySelectorAll('#nav-dests .nav-item').forEach(el => el.classList.remove('active'));
+      const navEl = document.getElementById('nav-' + (d || 'ALL'));
+      if (navEl) navEl.classList.add('active');
+      // Update heading
+      const NAMES = { FLN: 'Florianópolis', GIG: 'Río de Janeiro', SSA: 'Salvador', FOR: 'Fortaleza', REC: 'Recife', NAT: 'Natal', MCZ: 'Maceió', BPS: 'Porto Seguro' };
+      document.querySelector('.page-heading').innerHTML = d ? `Vuelos a <em>${NAMES[d] || d}</em>` : 'Mejor precio a <em>Brasil</em>';
+      renderDeals(d);
+      rt();
+    }
+
+    function init() {
+      document.getElementById('hrate').textContent = USDARS.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      document.getElementById('hts').textContent = TS;
+      const sorted = [...VUELOS].sort((a, b) => a.precio_usd - b.precio_usd);
+      const dirs = VUELOS.filter(v => v.es_directo);
+      const best = sorted[0];
+      const fuentes = [...new Set(VUELOS.map(v => v.fuente || 'amadeus'))];
+      document.getElementById('psub').textContent = `${TS} · ${VUELOS.length} vuelos · ${fuentes.length} fuentes activas`;
+      document.getElementById('st').textContent = VUELOS.length;
+      document.getElementById('sd').textContent = dirs.length;
+      document.getElementById('sb').textContent = best ? fu(best.precio_usd) : '—';
+      document.getElementById('sdest').textContent = [...new Set(VUELOS.map(v => v.destino))].length;
+      // Populate sidebar counts
+      const destCounts = {};
+      VUELOS.forEach(v => { destCounts[v.destino] = (destCounts[v.destino] || 0) + 1; });
+      Object.keys(destCounts).forEach(d => {
+        const el = document.getElementById('cnt-' + d);
+        if (el) el.textContent = destCounts[d];
+      });
+      renderDeals(''); renderChart(); rt();
+      // Activate max filter button visually (on by default)
+      document.getElementById('bmax').classList.add('on');
+    }
+
+    function renderDeals(filterDest) {
+      let src = [...VUELOS];
+      if (filterDest) src = src.filter(v => v.destino === filterDest);
+      if (F.dir) src = src.filter(v => v.es_directo);
+      if (F.max) src = src.filter(v => pm(v.duracion_ida) <= 300);
+      // If filtering by dest, show all flights for that dest; otherwise best per dest
+      let deals;
+      if (filterDest) {
+        deals = src.sort((a, b) => a.precio_usd - b.precio_usd).slice(0, 8);
+      } else {
+        const best = {};
+        src.forEach(v => {
+          const d = v.destino, c = best[d];
+          if (!c) { best[d] = v; return; }
+          if (v.es_directo && !c.es_directo) { best[d] = v; return; }
+          if (!v.es_directo && c.es_directo) return;
+          if (v.precio_usd < c.precio_usd) best[d] = v;
+        });
+        deals = Object.values(best).sort((a, b) => {
+          if (a.es_directo && !b.es_directo) return -1;
+          if (!a.es_directo && b.es_directo) return 1;
+          return a.precio_usd - b.precio_usd;
+        });
+      }
+      const prev = {};
+      const bd = {};
+      HISTORIAL.forEach(h => { if (!bd[h.destino]) bd[h.destino] = []; bd[h.destino].push(h); });
+      Object.keys(bd).forEach(d => {
+        const s = bd[d].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+        if (s.length >= 2) prev[d] = s[s.length - 2].precio_min_usd;
+      });
+      const globalBest = [...VUELOS].sort((a, b) => a.precio_usd - b.precio_usd)[0];
+      document.getElementById('dgrid').innerHTML = deals.map((v, i) => {
+        const isGlobalBest = globalBest && v.destino === globalBest.destino && v.precio_usd === globalBest.precio_usd && !filterDest;
+        const over = pm(v.duracion_ida) > 300;
+        const tb = v.es_directo ? `<span class="tag dir">✈ DIRECTO</span>` : over ? `<span class="tag ovr">⚠ ${v.escalas_ida || '?'} escala · +5hs</span>` : `<span class="tag stp">🔄 ${v.escalas_ida || '?'} escala(s)</span>`;
+        const p = prev[v.destino];
+        let tr = '';
+        if (p && Math.abs(p - v.precio_usd) > 2) { const pct = ((v.precio_usd - p) / p) * 100; tr = pct < 0 ? `<div class="dcard-trend dn">▼ ${Math.abs(pct).toFixed(1)}% vs anterior</div>` : `<div class="dcard-trend up">▲ ${pct.toFixed(1)}% vs anterior</div>`; }
+        const L = lk(v);
+        return `<div class="dcard ${(i === 0 || isGlobalBest) ? 'winner' : ''}">
+      ${(i === 0 && !filterDest) ? '<div class="dcard-badge">🏆 MEJOR PRECIO</div>' : ''}
+      ${(i === 0 && filterDest) ? '<div class="dcard-badge">💰 MEJOR</div>' : ''}
+      <div class="dcard-top">
+        <div><div class="dcard-dest">${v.destino}</div><div class="dcard-city">${v.destino_nombre || ''}</div></div>
+        <div class="dcard-plane">✈</div>
+      </div>
+      <div class="dcard-airline">${v.aerolinea_nombre || v.aerolinea} <span class="src-tag">${v.fuente || 'amadeus'}</span></div>
+      <div>${tb}</div>
+      <div class="dcard-route" style="margin-top:8px">${v.origen || 'EZE'} → ${v.destino} · ${v.duracion_ida || '?'} ida · Sale ${v.hora_salida || '?'}${over ? ' <span style="color:var(--red)">⚠</span>' : ''}</div>
+      <div style="font-size:0.68rem;color:var(--text2);margin-bottom:10px">📅 Sale ${v.fecha_ida_bonita || v.fecha_ida || '?'} · Vuelve ${v.fecha_vuelta_bonita || v.fecha_vuelta || '?'}</div>
+      <div class="dcard-prices">
+        <div class="price-ars">${fa(v.precio_ars)}</div>
+        <div class="price-usd">${fu(v.precio_usd)} · total ${PAX} pasajeros</div>
+        <div class="price-pp">Por persona: ${fa(v.precio_ars / PAX)} / ${fu(v.precio_usd / PAX)}</div>
+      </div>
+      ${tr}
+      <div class="buy-row">
+        <a class="bbtn b-gf"  href="${L.gf}"  target="_blank">✈ Google Flights</a>
+        <a class="bbtn b-kyk" href="${L.ky}"  target="_blank">🔍 Kayak</a>
+        <a class="bbtn b-dsp" href="${L.dsp}" target="_blank">🔴 Despegar</a>
+        <a class="bbtn b-fly" href="${L.fly}" target="_blank">🟠 Flybondi</a>
+        <a class="bbtn b-jet" href="${L.jet}" target="_blank">🟣 JetSmart</a>
+      </div>
+    </div>`;
+      }).join('');
+    }
+
+    function renderChart() {
+      const fechas = [...new Set(HISTORIAL.map(h => h.timestamp.slice(0, 16)))].sort();
+      const dests = [...new Set(HISTORIAL.map(h => h.destino))];
+      document.getElementById('cnote').textContent = fechas.length < 2 ? `${fechas.length} búsqueda — necesitás al menos 2 para ver tendencia` : `${fechas.length} búsquedas · ${dests.length} destinos`;
+      const ds = dests.map(d => ({
+        label: d,
+        data: fechas.map(f => { const pts = HISTORIAL.filter(h => h.destino === d && h.timestamp.slice(0, 16) === f); return pts.length ? Math.min(...pts.map(p => p.precio_min_ars)) : null; }),
+        borderColor: CLR[d] || '#888', backgroundColor: (CLR[d] || '#888') + '18',
+        tension: 0.4, fill: false, pointRadius: 4, borderWidth: 2,
+      }));
+      new Chart(document.getElementById('chart').getContext('2d'), {
+        type: 'line', data: { labels: fechas, datasets: ds },
+        options: {
+          responsive: true, interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#7aada0', font: { size: 10 }, boxWidth: 10, padding: 16 } },
+            tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw ? '$' + Math.round(ctx.raw).toLocaleString('es-AR') : 'N/A'}` } },
+          },
+          scales: {
+            y: { grid: { color: '#1f3028' }, ticks: { color: '#3d6057', callback: v => '$' + Math.round(v / 1000) + 'k' } },
+            x: { grid: { display: false }, ticks: { color: '#3d6057', maxRotation: 30 } },
+          }
+        }
+      });
+    }
+
+    function rt() {
+      const fd = document.getElementById('fd').value.toUpperCase().trim();
+      const fa2 = document.getElementById('fa').value.toUpperCase().trim();
+      const s = document.getElementById('fs').value;
+      let v = [...VUELOS];
+      if (fd) v = v.filter(x => (x.destino + ' ' + (x.destino_nombre || '')).toUpperCase().includes(fd));
+      if (fa2) v = v.filter(x => (x.aerolinea + ' ' + (x.aerolinea_nombre || '')).toUpperCase().includes(fa2));
+      if (F.dir) v = v.filter(x => x.es_directo);
+      if (F.max) v = v.filter(x => pm(x.duracion_ida) <= 300);
+      if (s === 'pa') v.sort((a, b) => a.precio_usd - b.precio_usd);
+      else if (s === 'pd') v.sort((a, b) => b.precio_usd - a.precio_usd);
+      else v.sort((a, b) => pm(a.duracion_ida) - pm(b.duracion_ida));
+      document.getElementById('rc').textContent = `${v.length} vuelos`;
+      const lb = {};
+      HISTORIAL.forEach(h => { if (!lb[h.destino] || h.timestamp > lb[h.destino].timestamp) lb[h.destino] = h; });
+      document.getElementById('tb').innerHTML = v.map(x => {
+        const over = pm(x.duracion_ida) > 300;
+        const tb = x.es_directo ? `<span class="tag dir" style="font-size:0.58rem">✈ DIR</span>` : `<span class="tag ${over ? 'ovr' : 'stp'}" style="font-size:0.58rem">🔄 ${x.escalas_ida ?? '?'}</span>`;
+        const lp = lb[x.destino];
+        let tr = `<span class="tfl">━</span>`;
+        if (lp && Math.abs(lp.precio_min_usd - x.precio_usd) > 2) { const pct = ((x.precio_usd - lp.precio_min_usd) / lp.precio_min_usd) * 100; tr = pct < 0 ? `<span class="tdn">▼${Math.abs(pct).toFixed(1)}%</span>` : `<span class="tup">▲${pct.toFixed(1)}%</span>`; }
+        const L = lk(x);
+        return `<tr>
+      <td><div class="tc">${x.destino}</div><div class="tn">${x.destino_nombre || ''}</div></td>
+      <td style="color:var(--text2);font-size:0.74rem">${x.origen || 'EZE'}</td>
+      <td style="font-size:0.68rem;color:var(--text2)">${x.fecha_ida_bonita || x.fecha_ida || '—'}<br>${x.fecha_vuelta_bonita || x.fecha_vuelta || ''}</td>
+      <td><div class="ta">${x.aerolinea_nombre || x.aerolinea}</div><div class="ts">${x.fuente || 'amadeus'}</div></td>
+      <td>${tb}</td>
+      <td><span class="${over ? 'dover' : ''}">${x.duracion_ida || '—'}</span></td>
+      <td style="color:var(--text2);font-size:0.74rem">${x.hora_salida || '—'}</td>
+      <td style="text-align:right"><div class="tusd">${fu(x.precio_usd)}</div></td>
+      <td style="text-align:right"><div class="tars">${fa(x.precio_ars)}</div></td>
+      <td style="text-align:right"><div class="tusd">${fu(x.precio_usd / PAX)}</div><span class="tpp">${fa(x.precio_ars / PAX)}</span></td>
+      <td>${tr}</td>
+      <td><div class="mb">
+        <a class="b-gf"  href="${L.gf}"  target="_blank">GF</a>
+        <a class="b-kyk" href="${L.ky}"  target="_blank">KYK</a>
+        <a class="b-dsp" href="${L.dsp}" target="_blank">DSP</a>
+        <a class="b-fly" href="${L.fly}" target="_blank">FLY</a>
+        <a class="b-jet" href="${L.jet}" target="_blank">JET</a>
+      </div></td>
+    </tr>`;
+      }).join('');
+    }
+
+    init();
+  </script>
+</body>
+
+</html>

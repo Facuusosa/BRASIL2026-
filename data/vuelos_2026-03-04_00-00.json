@@ -1,0 +1,641 @@
+[
+    {
+        "destino": "FLN",
+        "aerolinea": "G3",
+        "precio_usd": 715.6,
+        "precio_ars": 1012561.76,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 8.1%"
+    },
+    {
+        "destino": "FLN",
+        "aerolinea": "G3",
+        "precio_usd": 715.6,
+        "precio_ars": 1012561.76,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 8.1%"
+    },
+    {
+        "destino": "FLN",
+        "aerolinea": "G3",
+        "precio_usd": 715.6,
+        "precio_ars": 1012561.76,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 8.1%"
+    },
+    {
+        "destino": "FLN",
+        "aerolinea": "G3",
+        "precio_usd": 715.6,
+        "precio_ars": 1012561.76,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 8.1%"
+    },
+    {
+        "destino": "FLN",
+        "aerolinea": "G3",
+        "precio_usd": 715.6,
+        "precio_ars": 1012561.76,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 8.1%"
+    },
+    {
+        "destino": "FLN",
+        "aerolinea": "G3",
+        "precio_usd": 715.6,
+        "precio_ars": 1012561.76,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 8.1%"
+    },
+    {
+        "destino": "FLN",
+        "aerolinea": "G3",
+        "precio_usd": 715.6,
+        "precio_ars": 1012561.76,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 8.1%"
+    },
+    {
+        "destino": "FLN",
+        "aerolinea": "G3",
+        "precio_usd": 715.6,
+        "precio_ars": 1012561.76,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 8.1%"
+    },
+    {
+        "destino": "FLN",
+        "aerolinea": "G3",
+        "precio_usd": 715.6,
+        "precio_ars": 1012561.76,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 8.1%"
+    },
+    {
+        "destino": "FLN",
+        "aerolinea": "G3",
+        "precio_usd": 715.6,
+        "precio_ars": 1012561.76,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 8.1%"
+    },
+    {
+        "destino": "SSA",
+        "aerolinea": "G3",
+        "precio_usd": 745.6,
+        "precio_ars": 1055011.25,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-down",
+        "variation_text": "▼ 24.2%"
+    },
+    {
+        "destino": "SSA",
+        "aerolinea": "G3",
+        "precio_usd": 745.6,
+        "precio_ars": 1055011.25,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-down",
+        "variation_text": "▼ 24.2%"
+    },
+    {
+        "destino": "SSA",
+        "aerolinea": "G3",
+        "precio_usd": 752.2,
+        "precio_ars": 1064350.14,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-down",
+        "variation_text": "▼ 23.6%"
+    },
+    {
+        "destino": "SSA",
+        "aerolinea": "G3",
+        "precio_usd": 752.2,
+        "precio_ars": 1064350.14,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-down",
+        "variation_text": "▼ 23.6%"
+    },
+    {
+        "destino": "SSA",
+        "aerolinea": "G3",
+        "precio_usd": 752.2,
+        "precio_ars": 1064350.14,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-down",
+        "variation_text": "▼ 23.6%"
+    },
+    {
+        "destino": "SSA",
+        "aerolinea": "G3",
+        "precio_usd": 752.2,
+        "precio_ars": 1064350.14,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-down",
+        "variation_text": "▼ 23.6%"
+    },
+    {
+        "destino": "SSA",
+        "aerolinea": "G3",
+        "precio_usd": 752.2,
+        "precio_ars": 1064350.14,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-down",
+        "variation_text": "▼ 23.6%"
+    },
+    {
+        "destino": "SSA",
+        "aerolinea": "G3",
+        "precio_usd": 752.2,
+        "precio_ars": 1064350.14,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-down",
+        "variation_text": "▼ 23.6%"
+    },
+    {
+        "destino": "SSA",
+        "aerolinea": "G3",
+        "precio_usd": 752.2,
+        "precio_ars": 1064350.14,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-down",
+        "variation_text": "▼ 23.6%"
+    },
+    {
+        "destino": "SSA",
+        "aerolinea": "G3",
+        "precio_usd": 752.2,
+        "precio_ars": 1064350.14,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-down",
+        "variation_text": "▼ 23.6%"
+    },
+    {
+        "destino": "FOR",
+        "aerolinea": "G3",
+        "precio_usd": 795.4,
+        "precio_ars": 1125477.4,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 6.8%"
+    },
+    {
+        "destino": "FOR",
+        "aerolinea": "G3",
+        "precio_usd": 795.4,
+        "precio_ars": 1125477.4,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 6.8%"
+    },
+    {
+        "destino": "FOR",
+        "aerolinea": "G3",
+        "precio_usd": 795.4,
+        "precio_ars": 1125477.4,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 6.8%"
+    },
+    {
+        "destino": "FOR",
+        "aerolinea": "G3",
+        "precio_usd": 795.4,
+        "precio_ars": 1125477.4,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 6.8%"
+    },
+    {
+        "destino": "FOR",
+        "aerolinea": "G3",
+        "precio_usd": 795.4,
+        "precio_ars": 1125477.4,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 6.8%"
+    },
+    {
+        "destino": "FOR",
+        "aerolinea": "G3",
+        "precio_usd": 795.4,
+        "precio_ars": 1125477.4,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 6.8%"
+    },
+    {
+        "destino": "FOR",
+        "aerolinea": "G3",
+        "precio_usd": 795.4,
+        "precio_ars": 1125477.4,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 6.8%"
+    },
+    {
+        "destino": "FOR",
+        "aerolinea": "G3",
+        "precio_usd": 795.4,
+        "precio_ars": 1125477.4,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 6.8%"
+    },
+    {
+        "destino": "FOR",
+        "aerolinea": "G3",
+        "precio_usd": 795.4,
+        "precio_ars": 1125477.4,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 6.8%"
+    },
+    {
+        "destino": "FOR",
+        "aerolinea": "G3",
+        "precio_usd": 795.4,
+        "precio_ars": 1125477.4,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 6.8%"
+    },
+    {
+        "destino": "BPS",
+        "aerolinea": "G3",
+        "precio_usd": 902.4,
+        "precio_ars": 1276880.57,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "",
+        "variation_text": "━"
+    },
+    {
+        "destino": "BPS",
+        "aerolinea": "G3",
+        "precio_usd": 902.4,
+        "precio_ars": 1276880.57,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "",
+        "variation_text": "━"
+    },
+    {
+        "destino": "BPS",
+        "aerolinea": "G3",
+        "precio_usd": 902.4,
+        "precio_ars": 1276880.57,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "",
+        "variation_text": "━"
+    },
+    {
+        "destino": "BPS",
+        "aerolinea": "G3",
+        "precio_usd": 902.4,
+        "precio_ars": 1276880.57,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "",
+        "variation_text": "━"
+    },
+    {
+        "destino": "BPS",
+        "aerolinea": "G3",
+        "precio_usd": 902.4,
+        "precio_ars": 1276880.57,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "",
+        "variation_text": "━"
+    },
+    {
+        "destino": "BPS",
+        "aerolinea": "G3",
+        "precio_usd": 902.4,
+        "precio_ars": 1276880.57,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "",
+        "variation_text": "━"
+    },
+    {
+        "destino": "BPS",
+        "aerolinea": "G3",
+        "precio_usd": 902.4,
+        "precio_ars": 1276880.57,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "",
+        "variation_text": "━"
+    },
+    {
+        "destino": "BPS",
+        "aerolinea": "G3",
+        "precio_usd": 902.4,
+        "precio_ars": 1276880.57,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "",
+        "variation_text": "━"
+    },
+    {
+        "destino": "BPS",
+        "aerolinea": "G3",
+        "precio_usd": 902.4,
+        "precio_ars": 1276880.57,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "",
+        "variation_text": "━"
+    },
+    {
+        "destino": "BPS",
+        "aerolinea": "G3",
+        "precio_usd": 902.4,
+        "precio_ars": 1276880.57,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "",
+        "variation_text": "━"
+    },
+    {
+        "destino": "GIG",
+        "aerolinea": "EK",
+        "precio_usd": 914.0,
+        "precio_ars": 1293294.37,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 1.9%"
+    },
+    {
+        "destino": "MCZ",
+        "aerolinea": "G3",
+        "precio_usd": 1012.6,
+        "precio_ars": 1432811.68,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-down",
+        "variation_text": "▼ 5.0%"
+    },
+    {
+        "destino": "MCZ",
+        "aerolinea": "G3",
+        "precio_usd": 1012.6,
+        "precio_ars": 1432811.68,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-down",
+        "variation_text": "▼ 5.0%"
+    },
+    {
+        "destino": "MCZ",
+        "aerolinea": "G3",
+        "precio_usd": 1012.6,
+        "precio_ars": 1432811.68,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-down",
+        "variation_text": "▼ 5.0%"
+    },
+    {
+        "destino": "MCZ",
+        "aerolinea": "G3",
+        "precio_usd": 1012.6,
+        "precio_ars": 1432811.68,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-down",
+        "variation_text": "▼ 5.0%"
+    },
+    {
+        "destino": "MCZ",
+        "aerolinea": "G3",
+        "precio_usd": 1012.6,
+        "precio_ars": 1432811.68,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-down",
+        "variation_text": "▼ 5.0%"
+    },
+    {
+        "destino": "MCZ",
+        "aerolinea": "G3",
+        "precio_usd": 1012.6,
+        "precio_ars": 1432811.68,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-down",
+        "variation_text": "▼ 5.0%"
+    },
+    {
+        "destino": "MCZ",
+        "aerolinea": "G3",
+        "precio_usd": 1012.6,
+        "precio_ars": 1432811.68,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-down",
+        "variation_text": "▼ 5.0%"
+    },
+    {
+        "destino": "MCZ",
+        "aerolinea": "G3",
+        "precio_usd": 1012.6,
+        "precio_ars": 1432811.68,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-down",
+        "variation_text": "▼ 5.0%"
+    },
+    {
+        "destino": "MCZ",
+        "aerolinea": "G3",
+        "precio_usd": 1012.6,
+        "precio_ars": 1432811.68,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-down",
+        "variation_text": "▼ 5.0%"
+    },
+    {
+        "destino": "MCZ",
+        "aerolinea": "G3",
+        "precio_usd": 1012.6,
+        "precio_ars": 1432811.68,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-down",
+        "variation_text": "▼ 5.0%"
+    },
+    {
+        "destino": "REC",
+        "aerolinea": "ET",
+        "precio_usd": 1277.4,
+        "precio_ars": 1807499.16,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 1.8%"
+    },
+    {
+        "destino": "GIG",
+        "aerolinea": "AR",
+        "precio_usd": 1305.6,
+        "precio_ars": 1847401.67,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 45.6%"
+    },
+    {
+        "destino": "GIG",
+        "aerolinea": "AR",
+        "precio_usd": 1333.4,
+        "precio_ars": 1886738.2,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 48.7%"
+    },
+    {
+        "destino": "GIG",
+        "aerolinea": "TK",
+        "precio_usd": 1352.2,
+        "precio_ars": 1913339.88,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 50.8%"
+    },
+    {
+        "destino": "REC",
+        "aerolinea": "EK",
+        "precio_usd": 1420.8,
+        "precio_ars": 2010407.7,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 13.2%"
+    },
+    {
+        "destino": "REC",
+        "aerolinea": "EK",
+        "precio_usd": 1420.8,
+        "precio_ars": 2010407.7,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 13.2%"
+    },
+    {
+        "destino": "REC",
+        "aerolinea": "TK",
+        "precio_usd": 1426.4,
+        "precio_ars": 2018331.61,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 13.7%"
+    },
+    {
+        "destino": "NAT",
+        "aerolinea": "EK",
+        "precio_usd": 1437.4,
+        "precio_ars": 2033896.42,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 1.9%"
+    },
+    {
+        "destino": "REC",
+        "aerolinea": "ET",
+        "precio_usd": 1440.8,
+        "precio_ars": 2038707.36,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 14.8%"
+    },
+    {
+        "destino": "REC",
+        "aerolinea": "ET",
+        "precio_usd": 1440.8,
+        "precio_ars": 2038707.36,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 14.8%"
+    },
+    {
+        "destino": "REC",
+        "aerolinea": "ET",
+        "precio_usd": 1440.8,
+        "precio_ars": 2038707.36,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 14.8%"
+    },
+    {
+        "destino": "REC",
+        "aerolinea": "TK",
+        "precio_usd": 1456.4,
+        "precio_ars": 2060781.1,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 16.1%"
+    },
+    {
+        "destino": "REC",
+        "aerolinea": "TK",
+        "precio_usd": 1456.4,
+        "precio_ars": 2060781.1,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 16.1%"
+    },
+    {
+        "destino": "REC",
+        "aerolinea": "TK",
+        "precio_usd": 1466.4,
+        "precio_ars": 2074930.92,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 16.9%"
+    },
+    {
+        "destino": "GIG",
+        "aerolinea": "TK",
+        "precio_usd": 1497.0,
+        "precio_ars": 2118229.4,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 66.9%"
+    },
+    {
+        "destino": "GIG",
+        "aerolinea": "ET",
+        "precio_usd": 1499.2,
+        "precio_ars": 2121342.36,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 67.2%"
+    },
+    {
+        "destino": "GIG",
+        "aerolinea": "ET",
+        "precio_usd": 1832.4,
+        "precio_ars": 2592814.67,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 104.3%"
+    },
+    {
+        "destino": "GIG",
+        "aerolinea": "ET",
+        "precio_usd": 1844.4,
+        "precio_ars": 2609794.46,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 105.6%"
+    },
+    {
+        "destino": "GIG",
+        "aerolinea": "ET",
+        "precio_usd": 2177.6,
+        "precio_ars": 3081266.76,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 142.8%"
+    },
+    {
+        "destino": "GIG",
+        "aerolinea": "AV",
+        "precio_usd": 2968.4,
+        "precio_ars": 4200235.24,
+        "timestamp": "2026-03-04 00:00",
+        "trend_class": "trend-up",
+        "variation_text": "▲ 231.0%"
+    }
+]
